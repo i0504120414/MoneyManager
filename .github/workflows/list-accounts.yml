@@ -22,6 +22,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PUPPETEER_ARGS: "--no-sandbox --disable-setuid-sandbox"
         run: node src/scripts/listAccounts.js
       
       - name: Upload Account List

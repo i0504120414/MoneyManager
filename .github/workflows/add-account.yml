@@ -102,6 +102,7 @@ jobs:
           PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
           OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
           OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
+          PUPPETEER_ARGS: "--no-sandbox --disable-setuid-sandbox"
         run: node src/scripts/testBankConnection.js
       
       - name: Add Account to Database
