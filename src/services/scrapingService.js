@@ -55,10 +55,13 @@ export async function scrapeTransactions(accountId, scrapingMode = 'regular', st
 
     console.log(`Scxxxxxxxxxaccount.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
 
-    // Initialize scraper
+    // Initialize scraper with puppeteer options for CI/CD environments
     const scraper = createScraper({
       companyId: account.bank_type,
       startDate: scrapeStartDate,
+      puppeteerLaunchConfig: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      },
       ...account.credentials,
     });
 

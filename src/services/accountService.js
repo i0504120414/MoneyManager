@@ -12,12 +12,15 @@ import { SCRAPERS } from '../config/banks.js';
  */
 export async function testBankConnection(bankType, credentials) {
   try {
-    console.log(`Testing connection to ${SCRAPERS[bankType]?.name || bankType}...`);
+    console.log(`Testixxxxxxxxction to ${SCRAPERS[bankType]?.name || bankType}...`);
     
-    // Initialize scraper
+    // Initialize scraper with puppeteer options for CI/CD environments
     const scraper = createScraper({
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+      puppeteerLaunchConfig: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      },
       ...credentials,
     });
 
