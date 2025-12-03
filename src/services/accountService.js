@@ -1,5 +1,5 @@
 import pkg from 'israeli-bank-scrapers';
-const { scraperTypes } = pkg;
+const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
 import { SCRAPERS } from '../config/banks.js';
@@ -15,7 +15,7 @@ export async function testBankConnection(bankType, credentials) {
     console.log(`Testing connection to ${SCRAPERS[bankType]?.name || bankType}...`);
     
     // Initialize scraper
-    const scraper = scraperTypes[bankType].create({
+    const scraper = createScraper({
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
       ...credentials,

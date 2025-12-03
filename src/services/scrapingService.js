@@ -1,5 +1,5 @@
 import pkg from 'israeli-bank-scrapers';
-const { scraperTypes } = pkg;
+const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -53,10 +53,10 @@ export async function scrapeTransactions(accountId, scrapingMode = 'regular', st
         throw new Error(`Unknown scraping mode: ${scrapingMode}`);
     }
 
-    console.log(`Scraping ${account.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
+    console.log(`Scxxxxxxxxxaccount.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
 
     // Initialize scraper
-    const scraper = scraperTypes[account.bank_type].create({
+    const scraper = createScraper({
       companyId: account.bank_type,
       startDate: scrapeStartDate,
       ...account.credentials,
