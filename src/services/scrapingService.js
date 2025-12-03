@@ -1,4 +1,5 @@
-import { scraperTypes } from 'israeli-bank-scrapers';
+import pkg from 'israeli-bank-scrapers';
+const { scraperTypes } = pkg;
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
 
