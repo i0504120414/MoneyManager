@@ -9,25 +9,25 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Account structure
-export interface BankAccount {
-  id: string;
-  bank_type: string;
-  credentials: Record<string, string>; // Encrypted in real scenario
-  created_at: string;
-  last_updated: string;
-  is_active: boolean;
-}
+/**
+ * @typedef {Object} BankAccount
+ * @property {string} id
+ * @property {string} bank_type
+ * @property {Record<string, string>} credentials
+ * @property {string} created_at
+ * @property {string} last_updated
+ * @property {boolean} is_active
+ */
 
-// Transaction structure
-export interface Transaction {
-  id: string;
-  account_id: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: 'debit' | 'credit';
-  category?: string;
-  raw_data: Record<string, any>;
-  created_at: string;
-}
+/**
+ * @typedef {Object} Transaction
+ * @property {string} id
+ * @property {string} account_id
+ * @property {string} date
+ * @property {string} description
+ * @property {number} amount
+ * @property {'debit' | 'credit'} type
+ * @property {string} [category]
+ * @property {Record<string, any>} raw_data
+ * @property {string} created_at
+ */
