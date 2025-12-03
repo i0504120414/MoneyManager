@@ -1,0 +1,22 @@
+{
+  "name": "money-manager",
+  "version": "1.0.0",
+  "description": "Israeli bank account scraper and transaction manager",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index.js",
+    "test:connection": "node src/scripts/testBankConnection.js",
+    "scrape": "node src/scripts/scrapeTransactions.js",
+    "setup:db": "node src/scripts/setupDatabase.js"
+  },
+  "dependencies": {
+    "israeli-bank-scrapers": "^5.45.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.55.0"
+  }
+}
