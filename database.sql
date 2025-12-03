@@ -60,7 +60,8 @@ CREATE POLICY "Allow public insert to transactions" ON transactions
 -- Optional: Create a view for transaction summary
 -- =============================================================================
 
-CREATE VIEW IF NOT EXISTS transaction_summary AS
+DROP VIEW IF EXISTS transaction_summary CASCADE;
+CREATE VIEW transaction_summary AS
 SELECT 
   ba.id as account_id,
   ba.bank_type,
