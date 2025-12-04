@@ -50,8 +50,6 @@ jobs:
           ACCOUNT_ID: ${{ github.event.inputs.account_id }}
           SCRAPING_MODE: ${{ github.event.inputs.scraping_mode || 'regular' }}
           START_DATE: ${{ github.event.inputs.start_date }}
-          PUPPETEER_ARGS: "--no-sandbox --disable-setuid-sandbox"
-          NODE_OPTIONS: "--loader ./src/loaders/puppeteerLoader.mjs"
         run: node src/scripts/scrapeTransactions.js
       
       - name: Upload Results
