@@ -2,6 +2,10 @@ import pkg from 'israeli-bank-scrapers';
 const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
+import { setupPuppeteerConfig } from '../utils/puppeteerConfig.js';
+
+// Initialize puppeteer configuration for CI/CD environments
+setupPuppeteerConfig();
 
 /**
  * Scrape transactions from a bank account
@@ -55,11 +59,11 @@ export async function scrapeTransactions(accountId, scrapingMode = 'regular', st
 
     console.log(`Scraping ${account.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
 
-    // Initialize scraper with browser launch config for CI/CD environments
+    // Initialize scraper with launch config for CI/CD environments (disable sandbox)
     const scraper = createScraper({
       companyId: account.bank_type,
       startDate: scrapeStartDate,
-      browserLaunchConfig: {
+      launchConfig: {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
       ...account.credentials,

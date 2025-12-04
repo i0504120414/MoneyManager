@@ -3,6 +3,10 @@ const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
 import { SCRAPERS } from '../config/banks.js';
+import { setupPuppeteerConfig } from '../utils/puppeteerConfig.js';
+
+// Initialize puppeteer configuration for CI/CD environments
+setupPuppeteerConfig();
 
 /**
  * Test bank connection and validate credentials
@@ -14,11 +18,11 @@ export async function testBankConnection(bankType, credentials) {
   try {
     console.log(`Testing connection to ${SCRAPERS[bankType]?.name || bankType}...`);
     
-    // Initialize scraper with browser launch config for CI/CD environments
+    // Initialize scraper with launch config for CI/CD environments (disable sandbox)
     const scraper = createScraper({
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-      browserLaunchConfig: {
+      launchConfig: {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
       ...credentials,
