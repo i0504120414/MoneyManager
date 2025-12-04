@@ -1,8 +1,8 @@
-import dotenv from 'dotenv';
+
 import { scrapeTransactions } from '../services/scrapingService.js';
 import fs from 'fs';
 
-dotenv.config();
+
 
 async function main() {
   const accountId = process.env.ACCOUNT_ID;

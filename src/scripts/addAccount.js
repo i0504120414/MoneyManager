@@ -1,9 +1,9 @@
-import dotenv from 'dotenv';
+
 import { testBankConnection, addBankAccount } from '../services/accountService.js';
 import { SCRAPERS } from '../config/banks.js';
 import fs from 'fs';
 
-dotenv.config();
+
 
 async function main() {
   const bankType = process.env.BANK_TYPE;

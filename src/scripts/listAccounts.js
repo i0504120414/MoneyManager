@@ -1,8 +1,6 @@
-import dotenv from 'dotenv';
+
 import { listAccounts } from '../services/accountService.js';
 import fs from 'fs';
-
-dotenv.config();
 
 async function main() {
   try {
