@@ -11,67 +11,44 @@ export async function initialize() {
   if (isCI) {
     console.log('⚙️  Loader: Patching Puppeteer for CI/CD sandbox bypass');
     
-    // Pre-set environment variables
+    // Pre-set environment variables that Puppeteer respects
     process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
+    process.env.CHROMIUM_FLAGS = '--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu';
   }
 }
 
 export async function resolve(specifier, context, nextResolve) {
+  // This hook doesn't modify resolution
   return nextResolve(specifier);
 }
 
 export async function getFormat(url, context, nextGetFormat) {
+  // This hook doesn't modify format detection
   return nextGetFormat(url);
 }
 
 export async function getSource(url, context, nextGetSource) {
+  // This hook doesn't modify source loading
   return nextGetSource(url);
 }
 
 export async function getGlobalPreloadCode() {
+  // In ES module context, we can't use require() directly
+  // Instead, we'll use dynamic import to patch Puppeteer after it's loaded
   return `
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     
-    if (isCI) {
-      // Monkey-patch the puppeteer launch before it's used
-      globalThis.__puppeteerSandboxPatch = true;
+    if (isCI && globalThis.__puppeteerPatched !== true) {
+      globalThis.__puppeteerPatched = true;
+      console.log('⚙️  Global preload: Preparing Puppeteer patch for sandbox bypass');
       
-      // Try to intercept puppeteer via dynamic import
-      const originalImportMeta = import.meta;
+      // Patch using global import hook
+      const origImport = globalThis.importModule || null;
       
-      // Store original require if it exists
-      const Module = require('module');
-      if (Module) {
-        const orig = Module.prototype.require;
-        Module.prototype.require = function(id) {
-          const mod = orig.apply(this, arguments);
-          
-          if ((id === 'puppeteer' || id === 'puppeteer-core') && mod && mod.launch && !mod.__sandboxPatched) {
-            console.log('🔧 Puppeteer detected in require - applying sandbox patch');
-            const origLaunch = mod.launch;
-            
-            mod.launch = async function(opts = {}) {
-              const patched = {
-                ...opts,
-                args: [
-                  '--no-sandbox',
-                  '--disable-setuid-sandbox',
-                  '--disable-dev-shm-usage',
-                  '--disable-gpu',
-                  ...(opts.args || [])
-                ]
-              };
-              patched.args = [...new Set(patched.args)];
-              console.log('📋 Puppeteer launch args:', patched.args);
-              return origLaunch.call(this, patched);
-            };
-            
-            mod.__sandboxPatched = true;
-          }
-          
-          return mod;
-        };
-      }
+      // We need to intercept the israelis bank scraper's internal Puppeteer usage
+      // Since we can't reliably do this at the module level in ES modules,
+      // we'll rely on the environment variables set in initialize()
+      process.env.PUPPETEER_LAUNCH_ARGS = '--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu';
     }
   `;
 }
