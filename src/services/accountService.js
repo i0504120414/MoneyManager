@@ -40,7 +40,9 @@ export async function testBankConnection(bankType, credentials) {
       console.log(`  Found ${result.accounts.length} account(s)`);
       return true;
     } else {
-      console.log(`✗ No accounts found for ${SCRAPERS[bankType]?.name}`);
+      console.log(`✗ No accounts found for ${SCRAPERS[bankType]?.name}`
+        ,result.error
+      );
       return false;
     }
   } catch (error) {
