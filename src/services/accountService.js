@@ -48,7 +48,7 @@ export async function testBankConnection(bankType, credentials) {
       );
      
     }
-     throw new Error('No accounts found with provided credentials');
+     throw new Error(result.errorType);
   } catch (error) {
     console.log(`✗ Connection failed: ${error.message}`);
     return false;
