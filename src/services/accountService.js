@@ -35,7 +35,6 @@ export async function testBankConnection(bankType, credentials) {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
       ...credentials,
-      browserex
     });
 
     // Try to fetch accounts
