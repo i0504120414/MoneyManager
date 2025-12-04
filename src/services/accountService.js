@@ -44,9 +44,9 @@ export async function testBankConnection(bankType, credentials) {
       return true;
     } else {
       console.log(`✗ No accounts found for ${SCRAPERS[bankType]?.name}`
-        ,result.error
+        
       );
-      return false;
+      throw new Error('No accounts found with provided credentials');
     }
   } catch (error) {
     console.error(`✗ Connection failed: ${error.message}`);
