@@ -12,7 +12,7 @@ import { SCRAPERS } from '../config/banks.js';
  */
 export async function testBankConnection(bankType, credentials) {
   try {
-    console.log(`Testing connection to ${SCxxxxRS[bankType]?.name || bankType}...`);
+    console.log(`Testing connection to ${SCRAPERS[bankType]?.name || bankType}...`);
     
     // Initialize scraper with browser launch config for CI/CD environments
     const scraper = createScraper({
