@@ -11,24 +11,18 @@ const { createScraper } = pkg;
  * @returns {object} - Configured scraper
  */
 export function createScraperWithSandboxFix(options) {
-  // In CI/CD environments, ensure we disable sandbox
+  // In CI/CD environments, add puppeteer launch args
   const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
   
   if (isCI) {
-    // Add all possible puppeteer/browser launch arguments
+    // The library may not support all these, so we just pass what might work
+    // and let it handle what it doesn't understand
+    const sandboxArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+    
     const enhancedOptions = {
       ...options,
-      // Try different option names that libraries might support
-      puppeteerArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-      puppeteerOptions: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-      },
-      browserArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       launchConfig: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-      },
-      browser: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+        args: sandboxArgs,
       },
     };
     
