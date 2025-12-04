@@ -1,8 +1,7 @@
 // MUST COME FIRST - Patches Puppeteer to disable sandbox in CI/CD
 import '../patches/puppeteerPatch.js';
 
-import pkg from 'israeli-bank-scrapers';
-const { createScraper } = pkg;
+import { createScraperWithSandboxFix } from './scraperFactory.js';
 import { supabase } from '../db/client.js';
 import { v4 as uuidv4 } from 'uuid';
 import { SCRAPERS } from '../config/banks.js';
@@ -26,14 +25,10 @@ export async function testBankConnection(bankType, credentials) {
       process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
     }
     
-    // Initialize scraper with various config options that might work
-    const scraper = createScraper({
+    // Initialize scraper with sandbox-safe configuration
+    const scraper = createScraperWithSandboxFix({
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-      puppeteerArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      launchConfig: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      },
       ...credentials,
     });
 
