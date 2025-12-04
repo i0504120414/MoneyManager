@@ -34,6 +34,7 @@ export async function testBankConnection(bankType, credentials) {
 
     // Try to fetch accounts
     const result = await scraper.scrape();
+    console.log(result.data);
     
     if (result.accounts && result.accounts.length > 0) {
       console.log(`✓ Successfully connected to ${SCRAPERS[bankType]?.name}`);
