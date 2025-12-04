@@ -20,7 +20,7 @@ export async function testBankConnection(bankType, credentials) {
     
     // Ensure sandbox is disabled in CI/CD environments
     if (process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true') {
-      process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
+      process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
     }
     
     // Initialize scraper with various config options that might work
