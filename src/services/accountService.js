@@ -1,3 +1,6 @@
+// MUST COME FIRST - Patches Puppeteer to disable sandbox in CI/CD
+import '../patches/puppeteerPatch.js';
+
 import pkg from 'israeli-bank-scrapers';
 const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
@@ -32,6 +35,7 @@ export async function testBankConnection(bankType, credentials) {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
       ...credentials,
+      browserex
     });
 
     // Try to fetch accounts

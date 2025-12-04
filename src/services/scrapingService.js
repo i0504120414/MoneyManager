@@ -1,3 +1,6 @@
+// MUST COME FIRST - Patches Puppeteer to disable sandbox in CI/CD
+import '../patches/puppeteerPatch.js';
+
 import pkg from 'israeli-bank-scrapers';
 const { createScraper } = pkg;
 import { supabase } from '../db/client.js';
