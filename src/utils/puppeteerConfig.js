@@ -3,8 +3,6 @@
  * Disables sandbox when running in headless environments like GitHub Actions
  */
 
-import puppeteer from 'puppeteer';
-
 /**
  * Check if running in a CI/CD environment
  * @returns {boolean}
@@ -12,7 +10,7 @@ import puppeteer from 'puppeteer';
 function isCI() {
   return process.env.CI === 'true' || 
          process.env.GITHUB_ACTIONS === 'true' || 
-         process.env.PUPPETEER_ARGS === '--no-sandbox --disable-setuid-sandbox';
+         process.env.PUPPETEER_ARGS?.includes('--no-sandbox');
 }
 
 /**
@@ -23,7 +21,6 @@ export function getLaunchArgs() {
   const baseArgs = [
     '--disable-dev-shm-usage',
     '--disable-gpu',
-    '--single-process',
   ];
 
   if (isCI()) {
@@ -45,21 +42,36 @@ export function getLaunchConfig() {
 }
 
 /**
- * Override Puppeteer's launch method to inject our config
+ * Setup environment variables for Puppeteer
+ * This ensures sandbox is disabled in CI/CD environments
  */
 export function setupPuppeteerConfig() {
-  const originalLaunch = puppeteer.launch.bind(puppeteer);
-  
-  puppeteer.launch = async function(options = {}) {
-    const config = getLaunchConfig();
-    const mergedOptions = {
-      ...config,
-      ...options,
-      args: [
-        ...new Set([...config.args, ...(options.args || [])]),
-      ],
-    };
+  if (isCI()) {
+    // Set environment variables that Puppeteer respects
+    process.env.PUPPETEER_ARGS = '--no-sandbox --disable-setuid-sandbox';
     
-    return originalLaunch(mergedOptions);
-  };
+    // Try to patch the launch method if puppeteer is already loaded
+    try {
+      const puppeteer = require('puppeteer');
+      if (puppeteer && puppeteer.launch) {
+        const originalLaunch = puppeteer.launch.bind(puppeteer);
+        
+        puppeteer.launch = async function(options = {}) {
+          const config = getLaunchConfig();
+          const mergedOptions = {
+            ...config,
+            ...options,
+            args: [
+              ...new Set([...(config.args || []), ...(options.args || [])]),
+            ],
+          };
+          
+          console.log('Launching browser with args:', mergedOptions.args);
+          return originalLaunch(mergedOptions);
+        };
+      }
+    } catch (e) {
+      // Puppeteer not yet loaded, that's ok
+    }
+  }
 }

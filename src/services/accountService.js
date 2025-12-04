@@ -18,12 +18,18 @@ export async function testBankConnection(bankType, credentials) {
   try {
     console.log(`Testing connection to ${SCRAPERS[bankType]?.name || bankType}...`);
     
-    // Initialize scraper with launch config for CI/CD environments (disable sandbox)
+    // Ensure sandbox is disabled in CI/CD environments
+    if (process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true') {
+      process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
+    }
+    
+    // Initialize scraper with various config options that might work
     const scraper = createScraper({
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+      puppeteerArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       launchConfig: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
       ...credentials,
     });

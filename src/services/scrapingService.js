@@ -57,14 +57,20 @@ export async function scrapeTransactions(accountId, scrapingMode = 'regular', st
         throw new Error(`Unknown scraping mode: ${scrapingMode}`);
     }
 
-    console.log(`Scraping ${account.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
+    console.log(`Scxxxxxx ${account.bank_type} (${scrapingMode}) from ${scrapeStartDate.toISOString()}`);
 
-    // Initialize scraper with launch config for CI/CD environments (disable sandbox)
+    // Ensure sandbox is disabled in CI/CD environments
+    if (process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true') {
+      process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
+    }
+
+    // Initialize scraper with various config options that might work
     const scraper = createScraper({
       companyId: account.bank_type,
       startDate: scrapeStartDate,
+      puppeteerArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       launchConfig: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
       ...account.credentials,
     });
