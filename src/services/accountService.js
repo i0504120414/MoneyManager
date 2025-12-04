@@ -32,6 +32,8 @@ export async function testBankConnection(bankType, credentials) {
       ...credentials,
     });
 
+    console.log(scraper);
+
     // Try to fetch accounts
     const result = await scraper.scrape();
     console.log(result.data);
