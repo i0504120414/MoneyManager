@@ -33,7 +33,7 @@ async function main() {
     const scraperOptions = {
       companyId: bankType,
       startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-      args:{ '--no-sandbox': true, '--disable-setuid-sandbox': true }
+      args: ["--disable-dev-shm-usage", "--no-sandbox"]
     };
     const scraper = createScraper(scraperOptions);
     const result = await scraper.scrape(credentials);
