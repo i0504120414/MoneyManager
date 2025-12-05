@@ -1,13 +1,18 @@
 
-import { testBankConnection, addBankAccount } from '../services/accountService.js';
+
 import { SCRAPERS } from '../config/banks.js';
 import fs from 'fs';
+import { createScraper } from 'israeli-bank-scrapers';
+
 
 
 
 async function main() {
+
+  // Get bank type from environment variable
   const bankType = process.env.BANK_TYPE;
   
+  // Validate bank type.
   if (!bankType || !SCRAPERS[bankType]) {
     console.error(`Invalid bank type: ${bankType}`);
     process.exit(1);
@@ -16,14 +21,22 @@ async function main() {
   // Build credentials object from environment variables
   const credentials = buildCredentials(bankType);
 
+  // Validate credentials
   if (Object.keys(credentials).length === 0) {
     console.error('No credentials provided');
     process.exit(1);
   }
 
+
   try {
     // Test connection
-    const isConnected = await testBankConnection(bankType, credentials);
+    const scraperOptions = {
+      companyId: bankType,
+      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+    };
+    const scraper = createScraper(scraperOptions);
+    const result = await scraper.scrape(credentials);
+    const isConnected = result.accounts && result.accounts.length > 0;
     
     if (!isConnected) {
       console.error('Connection test failed');
