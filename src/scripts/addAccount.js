@@ -45,7 +45,7 @@ async function main() {
     }
 
     // Add account to database
-    const accountId = await addBankAccount(bankType, credentials);
+  //  const accountId = await addBankAccount(bankType, credentials);
 
     // Save summary
     const summary = {
