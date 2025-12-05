@@ -50,11 +50,11 @@ async function main() {
     // Save summary
     const summary = {
       success: true,
-      accountId,
+      //accountId,
       bankType,
       bankName: SCRAPERS[bankType].name,
       createdAt: new Date().toISOString(),
-      message: `Account successfully created with ID: ${accountId}`,
+      //message: `Account successfully created with ID: ${accountId}`,
     };
 
     fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
