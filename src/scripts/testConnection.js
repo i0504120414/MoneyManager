@@ -46,7 +46,7 @@ async function main() {
     console.log(`  Found ${result.accounts.length} account(s)`);
     
     result.accounts.forEach(account => {
-      console.log(`    - Account ID: ${account.id}`);
+      console.log(`    - Account ID: ${account.accountNumber || 'N/A'}, Balance: ${account.balance || 0}`);
 
     });
 
@@ -77,11 +77,9 @@ async function main() {
        .insert(
         result.accounts.map(account => ({
           user_account_id: data[0].id,
-          account_number: account.accountNumber || account.maskedId || '',
-          account_name: account.accountName || '',
+          account_number: account.accountNumber || '',
           bank_type: bankType,
           balance: account.balance || 0,
-          currency: account.currency || 'ILS',
           created_at: new Date().toISOString(),
           last_updated: new Date().toISOString(),
           is_active: true
