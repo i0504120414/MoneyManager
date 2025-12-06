@@ -9,7 +9,7 @@ export
 async function scrape(bank_type, credentials,startDate) {
   
     // Log scraping start
-    console.log(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString()}`);
+    console.log(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
 
 
     const scraperOptions = {
@@ -25,12 +25,14 @@ async function scrape(bank_type, credentials,startDate) {
 
   try {
     const result = await scraper.scrape(credentials);
+    console.log(`✓ Scraping completed for bank: ${bank_type}`);
+    return result;
   } catch (error) {
     console.error(`✗ Scraping failed: ${error.message}`);
     return { success: false, error: error.message };
   }
 
-  return result;
+ 
 
 
 }
