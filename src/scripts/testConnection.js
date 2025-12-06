@@ -74,9 +74,14 @@ async function main() {
       .from('bank_user_accounts')
       .select("*")
       .eq('bank_type', bankType)
-      .eq('credentials', credentials)
-      ;
-    console.log(`✓ User account saved with ID: ${userAccountData[0].id}`);
+      .eq('credentials', credentials);
+    if (userAccountError) {
+      throw new Error(`Failed to retrieve user account: ${userAccountError.message}`);
+    }
+    else{
+        console.log(`✓ User account saved with ID: ${userAccountData[0].id}`);
+    }
+    
 
     // Save each bank account
     const {data: accountsData, error: accountsError} = await supabase
