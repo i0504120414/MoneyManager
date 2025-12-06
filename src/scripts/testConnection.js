@@ -4,7 +4,7 @@ import { SCRAPERS } from '../config/banks.js';
 import { createScraper } from 'israeli-bank-scrapers';
 import fs from 'fs';
 import { scrape } from './scraper.js';
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
 
 
