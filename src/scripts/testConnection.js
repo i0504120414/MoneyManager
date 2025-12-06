@@ -58,7 +58,7 @@ async function main() {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Save user account
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('bank_user_accounts')
       .insert([
         {
