@@ -102,31 +102,31 @@ jobs:
           PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
           OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
           OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
-        run: node src/scripts/addAccount.js
+        run: node src/scripts/testConnection.js
       
-      - name: Add Account to Database
-        if: success()
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          BANK_TYPE: ${{ github.event.inputs.bank_type }}
-          USER_CODE: ${{ github.event.inputs.userCode }}
-          USERNAME: ${{ github.event.inputs.username }}
-          ID: ${{ github.event.inputs.id }}
-          PASSWORD: ${{ github.event.inputs.password }}
-          NUM: ${{ github.event.inputs.num }}
-          CARD_6_DIGITS: ${{ github.event.inputs.card6Digits }}
-          NATIONAL_ID: ${{ github.event.inputs.nationalID }}
-          EMAIL: ${{ github.event.inputs.email }}
-          PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
-          OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
-          OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
-        run: node src/scripts/addAccount.js
+      # - name: Add Account to Database
+      #   if: success()
+      #   env:
+      #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      #     SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      #     BANK_TYPE: ${{ github.event.inputs.bank_type }}
+      #     USER_CODE: ${{ github.event.inputs.userCode }}
+      #     USERNAME: ${{ github.event.inputs.username }}
+      #     ID: ${{ github.event.inputs.id }}
+      #     PASSWORD: ${{ github.event.inputs.password }}
+      #     NUM: ${{ github.event.inputs.num }}
+      #     CARD_6_DIGITS: ${{ github.event.inputs.card6Digits }}
+      #     NATIONAL_ID: ${{ github.event.inputs.nationalID }}
+      #     EMAIL: ${{ github.event.inputs.email }}
+      #     PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
+      #     OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
+      #     OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
+      #   run: node src/scripts/addAccount.js
       
-      - name: Upload Summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: account-setup-summary
-          path: account-summary.json
-          retention-days: 30
+      # - name: Upload Summary
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: account-setup-summary
+      #     path: account-summary.json
+      #     retention-days: 30
