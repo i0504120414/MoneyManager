@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS bank_user_accounts (
   bank_type VARCHAR(50) NOT NULL,
   credentials JSONB NOT NULL,
   created_at TIMESTAMP DEFAULT now(),
-  is_active BOOLEAN DEFAULT true
 );
 
 -- Create bank_accounts table
@@ -17,10 +16,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_account_id UUID NOT NULL REFERENCES bank_user_accounts(id) ON DELETE CASCADE,
   account_number VARCHAR(100),
-  account_name VARCHAR(200),
   bank_type VARCHAR(50) NOT NULL,
   balance DECIMAL(12, 2),
-  currency VARCHAR(10),
   created_at TIMESTAMP DEFAULT now(),
   last_updated TIMESTAMP DEFAULT now(),
   is_active BOOLEAN DEFAULT true

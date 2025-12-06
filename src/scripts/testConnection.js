@@ -45,16 +45,14 @@ async function main() {
     console.log(`✓ Successfully connected to ${SCRAPERS[bankType].name}`);
     console.log(`  Found ${result.accounts.length} account(s)`);
     
-    //save user account info
-    const userAccount = [bankType, credentials];
-    //save connected accounts info
-    const accountList = [];
-    for (const account of result.accounts) {
-        accountList.push({ id: account.id, maskedId: account.maskedId || '' });
-        console.log(`    - Account ID: ${account.id}, Masked ID: ${account.maskedId || 'N/A'}`);
-    }
+    result.accounts.forEach(account => {
+      console.log(`    - Account ID: ${account.id}`);
 
-    //save to supabase
+    });
+
+
+
+    //set supabase
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_KEY;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -66,8 +64,6 @@ async function main() {
         {
           bank_type: bankType,
           credentials: credentials,
-          created_at: new Date().toISOString(),
-          is_active: true
         }
       ]);
     if (error) {
@@ -75,13 +71,13 @@ async function main() {
     }
     console.log(`✓ User account saved with ID: ${data[0].id}`);
 
-    for (const account of result.accounts) {
-        let { data: accountsData, error: accountsError } = await supabase
+    // Save each bank account
+    const {data: accountsData, error: accountsError} = await supabase
       .from('bank_accounts')
-      .insert([
-        {
+       .insert(
+        result.accounts.map(account => ({
           user_account_id: data[0].id,
-          account_number: account.maskedId || '',
+          account_number: account.accountNumber || account.maskedId || '',
           account_name: account.accountName || '',
           bank_type: bankType,
           balance: account.balance || 0,
@@ -89,12 +85,12 @@ async function main() {
           created_at: new Date().toISOString(),
           last_updated: new Date().toISOString(),
           is_active: true
-        }
-      ]);
+        }))
+      );
     if (accountsError) {
       throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
     }
-    }
+    console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
   
 
     // Save summary
