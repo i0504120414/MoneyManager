@@ -3,19 +3,34 @@
 -- Paste this into Supabase SQL Editor
 -- =============================================================================
 
--- Create bank_accounts table
-CREATE TABLE IF NOT EXISTS bank_accounts (
+-- Create bank_user_accounts table
+CREATE TABLE IF NOT EXISTS bank_user_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bank_type VARCHAR(50) NOT NULL,
   credentials JSONB NOT NULL,
   created_at TIMESTAMP DEFAULT now(),
-  last_updated TIMESTAMP DEFAULT now(),
   is_active BOOLEAN DEFAULT true
 );
 
--- Create indexes for performance
+-- Create bank_accounts table
+CREATE TABLE IF NOT EXISTS bank_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_account_id UUID NOT NULL REFERENCES bank_user_accounts(id) ON DELETE CASCADE,
+  account_number VARCHAR(100),
+  account_name VARCHAR(200),
+  bank_type VARCHAR(50) NOT NULL,
+  balance DECIMAL(12, 2),
+  currency VARCHAR(10),
+  created_at TIMESTAMP DEFAULT now(),
+  last_updated TIMESTAMP DEFAULT now(),
+  is_active BOOLEAN DEFAULT true
+);
+-- Create indexes for bank_accounts
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_bank_type ON bank_accounts(bank_type);
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_active ON bank_accounts(is_active);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_user_account_id ON bank_accounts(user_account_id);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts(account_number);
+
 
 -- Create transactions table
 CREATE TABLE IF NOT EXISTS transactions (
@@ -55,6 +70,7 @@ CREATE POLICY "Allow public read access to transactions" ON transactions
 
 CREATE POLICY "Allow public insert to transactions" ON transactions
   FOR INSERT WITH CHECK (true);
+
 
 -- =============================================================================
 -- Optional: Create a view for transaction summary
@@ -101,3 +117,6 @@ BEGIN
   WHERE t.account_id = $1;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- =============================================================================
+

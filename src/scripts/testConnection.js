@@ -1,8 +1,10 @@
 
 
 import { SCRAPERS } from '../config/banks.js';
-import fs from 'fs';
 import { createScraper } from 'israeli-bank-scrapers';
+import fs from 'fs';
+import { scrape } from './scraper.js';
+import { createClient } from '@supabase/supabase-js'
 
 
 
@@ -29,14 +31,9 @@ async function main() {
 
 
   try {
+  
     // Test connection
-    const scraperOptions = {
-      companyId: bankType,
-      startDate: new Date(Date.now()), // Today
-      args: ["--disable-dev-shm-usage", "--no-sandbox"]
-    };
-    const scraper = createScraper(scraperOptions);
-    const result = await scraper.scrape(credentials);
+    const result = await scrape(bankType, credentials, new Date(Date.now()));
     const isConnected = result.accounts && result.accounts.length > 0;
     
     if (!isConnected) {
@@ -44,17 +41,69 @@ async function main() {
       process.exit(1);
     }
 
-    // Add account to database
-  //  const accountId = await addBankAccount(bankType, credentials);
+    // Log connected accounts
+    console.log(`✓ Successfully connected to ${SCRAPERS[bankType].name}`);
+    console.log(`  Found ${result.accounts.length} account(s)`);
+    
+    //save user account info
+    const userAccount = [bankType, credentials];
+    //save connected accounts info
+    const accountList = [];
+    for (const account of result.accounts) {
+        accountList.push({ id: account.id, maskedId: account.maskedId || '' });
+        console.log(`    - Account ID: ${account.id}, Masked ID: ${account.maskedId || 'N/A'}`);
+    }
+
+    //save to supabase
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Save user account
+    let { data, error } = await supabase
+      .from('bank_user_accounts')
+      .insert([
+        {
+          bank_type: bankType,
+          credentials: credentials,
+          created_at: new Date().toISOString(),
+          is_active: true
+        }
+      ]);
+    if (error) {
+      throw new Error(`Failed to save user account: ${error.message}`);
+    }
+    console.log(`✓ User account saved with ID: ${data[0].id}`);
+
+    for (const account of result.accounts) {
+        let { data: accountsData, error: accountsError } = await supabase
+      .from('bank_accounts')
+      .insert([
+        {
+          user_account_id: data[0].id,
+          account_number: account.maskedId || '',
+          account_name: account.accountName || '',
+          bank_type: bankType,
+          balance: account.balance || 0,
+          currency: account.currency || 'ILS',
+          created_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+          is_active: true
+        }
+      ]);
+    if (accountsError) {
+      throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
+    }
+    }
+  
 
     // Save summary
     const summary = {
       success: true,
-      //accountId,
       bankType,
       bankName: SCRAPERS[bankType].name,
       createdAt: new Date().toISOString(),
-      //message: `Account successfully created with ID: ${accountId}`,
+      message: `Account is connected successfully`,
     };
 
     fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
