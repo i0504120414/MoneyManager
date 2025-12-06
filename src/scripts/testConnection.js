@@ -89,7 +89,7 @@ async function main() {
     if (accountsError) {
       throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
     }
-    console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
+    console.log(`✓ Bank accounts saved with ${result.accounts.length} account(s)`);
   
 
     // Save summary
