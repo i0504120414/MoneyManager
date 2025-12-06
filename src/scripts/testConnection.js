@@ -97,12 +97,8 @@ async function main() {
     const accountsToInsert = result.accounts.map(account => ({
       user_account_id: userAccountId,
       account_number: account.accountNumber || '',
-      account_name: account.accountName || '',
       bank_type: bankType,
       balance: account.balance || 0,
-      currency: account.currency || 'ILS',
-      created_at: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
       is_active: true
     }));
 
