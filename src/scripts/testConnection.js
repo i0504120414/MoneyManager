@@ -70,13 +70,13 @@ async function main() {
       throw new Error(`Failed to save user account: ${error.message}`);
     }
 
-    const userAccountId = await supabase
+    const {data: userAccountData,error: userAccountError} = await supabase
       .from('bank_user_accounts')
-      .select('id')
+      .select("*")
       .eq('bank_type', bankType)
       .eq('credentials', credentials)
-      .single();
-    console.log(`✓ User account saved with ID: ${userAccountId.data.id}`);
+      ;
+    console.log(`✓ User account saved with ID: ${userAccountData[0].id}`);
 
     // Save each bank account
     const {data: accountsData, error: accountsError} = await supabase
