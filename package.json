@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "israeli-bank-scrapers": "^6.3.7",
-    "supabase": "latest"
+    "@supabase/supabase-js": "^2.39.7"
   }
 }
