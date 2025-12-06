@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS bank_user_accounts (
   bank_type VARCHAR(50) NOT NULL,
   credentials JSONB NOT NULL,
   created_at TIMESTAMP DEFAULT now(),
+  is_active BOOLEAN DEFAULT true,
+  UNIQUE(bank_type, credentials)
 );
 
 -- Create bank_accounts table
@@ -18,9 +20,11 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   account_number VARCHAR(100),
   bank_type VARCHAR(50) NOT NULL,
   balance DECIMAL(12, 2),
+  currency VARCHAR(10) DEFAULT 'ILS',
   created_at TIMESTAMP DEFAULT now(),
   last_updated TIMESTAMP DEFAULT now(),
-  is_active BOOLEAN DEFAULT true
+  is_active BOOLEAN DEFAULT true,
+  UNIQUE(user_account_id, account_number)
 );
 -- Create indexes for bank_accounts
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_bank_type ON bank_accounts(bank_type);

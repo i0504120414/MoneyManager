@@ -67,29 +67,78 @@ async function main() {
         }
       ])
       .select();
+    
+    let userAccountId;
+    
     if (error) {
-      throw new Error(`Failed to save user account: ${error.message}`);
+      // Check if it's a duplicate key error
+      if (error.code === '23505' || error.message.includes('duplicate')) {
+        console.log(`⚠ User account with this bank and credentials already exists. Using existing account.`);
+        // Fetch the existing account
+        const { data: existingAccount, error: fetchError } = await supabase
+          .from('bank_user_accounts')
+          .select('id')
+          .eq('bank_type', bankType)
+          .single();
+        
+        if (fetchError) {
+          throw new Error(`Failed to retrieve existing user account: ${fetchError.message}`);
+        }
+        userAccountId = existingAccount.id;
+      } else {
+        throw new Error(`Failed to save user account: ${error.message}`);
+      }
+    } else {
+      userAccountId = data[0].id;
+      console.log(`✓ User account saved with ID: ${userAccountId}`);
     }
-    console.log(`✓ User account saved with ID: ${data[0].id}`);
 
     // Save each bank account
+    const accountsToInsert = result.accounts.map(account => ({
+      user_account_id: userAccountId,
+      account_number: account.accountNumber || '',
+      account_name: account.accountName || '',
+      bank_type: bankType,
+      balance: account.balance || 0,
+      currency: account.currency || 'ILS',
+      created_at: new Date().toISOString(),
+      last_updated: new Date().toISOString(),
+      is_active: true
+    }));
+
     const {data: accountsData, error: accountsError} = await supabase
       .from('bank_accounts')
-       .insert(
-        result.accounts.map(account => ({
-          user_account_id: data[0].id,
-          account_number: account.accountNumber || '',
-          bank_type: bankType,
-          balance: account.balance || 0,
-          created_at: new Date().toISOString(),
-          last_updated: new Date().toISOString(),
-          is_active: true
-        }))
-      );
+      .insert(accountsToInsert)
+      .select();
+    
     if (accountsError) {
-      throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
+      // Check if it's a duplicate key error
+      if (accountsError.code === '23505' || accountsError.message.includes('duplicate')) {
+        console.log(`⚠ Some accounts already exist. Updating existing accounts...`);
+        
+        // Update existing accounts with new balance
+        for (const account of accountsToInsert) {
+          const { error: updateError } = await supabase
+            .from('bank_accounts')
+            .update({
+              balance: account.balance,
+              last_updated: account.last_updated,
+              is_active: true
+            })
+            .eq('user_account_id', userAccountId)
+            .eq('account_number', account.account_number);
+          
+          if (updateError) {
+            console.log(`⚠ Failed to update account ${account.account_number}: ${updateError.message}`);
+          }
+        }
+        console.log(`✓ Accounts updated with ${result.accounts.length} account(s)`);
+      } else {
+        throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
+      }
+    } else {
+      console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
     }
-    console.log(`✓ Bank accounts saved with ${result.accounts.length} account(s)`);
   
 
     // Save summary
