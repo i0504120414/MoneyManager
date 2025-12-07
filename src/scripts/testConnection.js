@@ -127,7 +127,8 @@ async function main() {
               is_active: true
             })
             .eq('user_account_id', userAccountId)
-            .eq('account_number', account.account_number);
+            .eq('account_number', account.account_number)
+            .select();
           
           if (updateError) {
             console.log(`⚠ Failed to update account ${account.account_number}: ${updateError.message}`);
