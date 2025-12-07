@@ -145,19 +145,35 @@ async function main() {
     // Save transactions
     console.log('Saving transactions to database...');
     const transactionsToInsert = [];
+    
+    // Create a map of account numbers to their Supabase IDs
+    const accountMap = {};
+    if (accountsData && accountsData.length > 0) {
+      accountsData.forEach(acc => {
+        accountMap[acc.account_number] = acc.id;
+      });
+    }
+
     for (const account of result.accounts) {
       if (account.txns && account.txns.length > 0) {
+        const supabaseAccountId = accountMap[account.accountNumber];
+        
+        if (!supabaseAccountId) {
+          console.log(`⚠ Could not find Supabase ID for account ${account.accountNumber}, skipping transactions`);
+          continue;
+        }
+
         const mappedTransactions = account.txns.map(tx => ({
-          bank_account_id: account.accountNumber, // או את ה-ID של החשבון מ-Supabase
-          type: tx.type || 'normal',
+          account_id: supabaseAccountId,
           identifier: tx.identifier || null,
           date: tx.date,
-          processed_date: tx.processedDate,
-          original_amount: tx.originalAmount,
-          original_currency: tx.originalCurrency,
-          charged_amount: tx.chargedAmount,
+          processed_date: tx.processedDate || null,
+          original_amount: tx.originalAmount || 0,
+          original_currency: tx.originalCurrency || 'ILS',
+          charged_amount: tx.chargedAmount || 0,
           description: tx.description || '',
           memo: tx.memo || null,
+          type: tx.type || 'normal',
           installment_number: tx.installments?.number || null,
           installment_total: tx.installments?.total || null,
           status: tx.status || 'completed',
@@ -173,15 +189,19 @@ async function main() {
         .from('transactions')
         .insert(transactionsToInsert)
         .select();
-        if (transactionsError) {
-            if (transactionsError.code === '23505' || transactionsError.message.includes('duplicate')) {
-                console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
-            } else {
-                throw new Error(`Failed to save transactions: ${transactionsError.message}`);
-            }
+        
+      if (transactionsError) {
+        if (transactionsError.code === '23505' || transactionsError.message.includes('duplicate')) {
+          console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
+        } else {
+          throw new Error(`Failed to save transactions: ${transactionsError.message}`);
         }
+      } else {
+        console.log(`✓ Transactions saved: ${transactionsData.length} transaction(s)`);
+      }
+    } else {
+      console.log(`ℹ No transactions to save`);
     }
-    console.log(`✓ Transactions saved: ${transactionsToInsert.length} transaction(s)`);
 
 
 

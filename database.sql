@@ -35,14 +35,20 @@ CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts(acc
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+  identifier INT,
   date TIMESTAMP NOT NULL,
+  processed_date TIMESTAMP,
+  original_amount DECIMAL(12, 2),
+  original_currency VARCHAR(10),
+  charged_amount DECIMAL(12, 2),
   description VARCHAR(500),
-  amount DECIMAL(12, 2),
-  type VARCHAR(10) NOT NULL CHECK (type IN ('debit', 'credit')),
-  category VARCHAR(50),
-  raw_data JSONB,
+  memo VARCHAR(500),
+  type VARCHAR(50),
+  installment_number INT,
+  installment_total INT,
+  status VARCHAR(50),
   created_at TIMESTAMP DEFAULT now(),
-  UNIQUE(account_id, date, description, amount)
+  UNIQUE(account_id, identifier, date, original_amount)
 );
 
 -- Create indexes for transactions
