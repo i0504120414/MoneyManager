@@ -146,8 +146,8 @@ async function main() {
     console.log('Saving transactions to database...');
     const transactionsToInsert = [];
     for (const account of result.accounts) {
-      if (account.transactions && account.transactions.length > 0) {
-        const mappedTransactions = account.transactions.map(tx => ({
+      if (account.txns && account.txns.length > 0) {
+        const mappedTransactions = account.txns.map(tx => ({
           bank_account_id: account.accountNumber, // או את ה-ID של החשבון מ-Supabase
           type: tx.type || 'normal',
           identifier: tx.identifier || null,
