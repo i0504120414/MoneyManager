@@ -1,12 +1,8 @@
 
 
 import { SCRAPERS } from '../config/banks.js';
-import fs from 'fs';
 import { scrape } from './scraper.js';
 import { createClient } from '@supabase/supabase-js';
-
-
-
 
 async function main() {
 
@@ -28,7 +24,7 @@ async function main() {
     process.exit(1);
   }
 
-
+  // Test connection
   try {
   
     //set date to one month ago
@@ -52,178 +48,14 @@ async function main() {
       console.log(`    - Account ID: ${account.accountNumber || 'N/A'}, Balance: ${account.balance || 0}, Transactions: ${account.txns ? account.txns.length : 0}`);
 
     });
+    } catch (error) {
 
-
-
-    //set supabase
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_KEY;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    console.log('Saving data to database...');
-    // Save user account
-    const { data, error } = await supabase
-      .from('bank_user_accounts')
-      .insert([
-        {
-          bank_type: bankType,
-          credentials: credentials,
-        }
-      ])
-      .select();
-    
-    let userAccountId;
-    
-    if (error) {
-      // Check if it's a duplicate key error
-      if (error.code === '23505' || error.message.includes('duplicate')) {
-        console.log(`⚠ User account with this bank and credentials already exists. Using existing account.`);
-        // Fetch the existing account
-        const { data: existingAccount, error: fetchError } = await supabase
-          .from('bank_user_accounts')
-          .select('id')
-          .eq('bank_type', bankType)
-          .single();
-        
-        if (fetchError) {
-          throw new Error(`Failed to retrieve existing user account: ${fetchError.message}`);
-        }
-        userAccountId = existingAccount.id;
-      } else {
-        throw new Error(`Failed to save user account: ${error.message}`);
-      }
-    } else {
-      userAccountId = data[0].id;
-      console.log(`✓ User account saved with ID: ${userAccountId}`);
-    }
-
-    // Save each bank account
-    console.log('Saving bank accounts to database...');
-    const accountsToInsert = result.accounts.map(account => ({
-      user_account_id: userAccountId,
-      account_number: account.accountNumber || '',
-      bank_type: bankType,
-      balance: account.balance || 0,
-      is_active: true
-    }));
-
-    const {data: accountsData, error: accountsError} = await supabase
-      .from('bank_accounts')
-      .insert(accountsToInsert)
-      .select();
-    
-    let savedAccountsData = accountsData;
-    
-    if (accountsError) {
-      // Check if it's a duplicate key error
-      if (accountsError.code === '23505' || accountsError.message.includes('duplicate')) {
-        console.log(`⚠ Some accounts already exist. Updating existing accounts...`);
-        
-        // Update existing accounts with new balance
-        for (const account of accountsToInsert) {
-          const { error: updateError } = await supabase
-            .from('bank_accounts')
-            .update({
-              balance: account.balance,
-              last_updated: new Date().toISOString(),
-              is_active: true
-            })
-            .eq('user_account_id', userAccountId)
-            .eq('account_number', account.account_number);
-          
-          if (updateError) {
-            console.log(`⚠ Failed to update account ${account.account_number}: ${updateError.message}`);
-          }
-        }
-        console.log(`✓ Accounts updated with ${result.accounts.length} account(s)`);
-        
-        // Fetch the updated accounts to get their IDs
-        const { data: fetchedAccounts, error: fetchError } = await supabase
-          .from('bank_accounts')
-          .select('id, account_number')
-          .eq('user_account_id', userAccountId);
-        
-        if (fetchError) {
-          throw new Error(`Failed to fetch bank accounts: ${fetchError.message}`);
-        }
-        savedAccountsData = fetchedAccounts;
-      } else {
-        throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
-      }
-    } else {
-      console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
-    }
-
-
-    // Save transactions
-    console.log('Saving transactions to database...');
-    const transactionsToInsert = [];
-    
-    // Create a map of account numbers to their Supabase IDs
-    const accountMap = {};
-    if (savedAccountsData && savedAccountsData.length > 0) {
-      savedAccountsData.forEach(acc => {
-        accountMap[acc.account_number] = acc.id;
-      });
-    }
-
-    for (const account of result.accounts) {
-      if (account.txns && account.txns.length > 0) {
-        const supabaseAccountId = accountMap[account.accountNumber];
-        
-        if (!supabaseAccountId) {
-          console.log(`⚠ Could not find Supabase ID for account ${account.accountNumber}, skipping transactions`);
-          continue;
-        }
-
-        const mappedTransactions = account.txns.map(tx => ({
-          account_id: supabaseAccountId,
-          identifier: tx.identifier || null,
-          date: tx.date,
-          processed_date: tx.processedDate || null,
-          original_amount: tx.originalAmount || 0,
-          original_currency: tx.originalCurrency || 'ILS',
-          charged_amount: tx.chargedAmount || 0,
-          description: tx.description || '',
-          memo: tx.memo || null,
-          type: tx.type || 'normal',
-          installment_number: tx.installments?.number || null,
-          installment_total: tx.installments?.total || null,
-          status: tx.status || 'completed',
-          created_at: new Date().toISOString()
-        }));
-        
-        transactionsToInsert.push(...mappedTransactions);
-      }
-    }
-
-    if (transactionsToInsert.length > 0) {
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .insert(transactionsToInsert)
-        .select();
-        
-      if (transactionsError) {
-        if (transactionsError.code === '23505' || transactionsError.message.includes('duplicate')) {
-          console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
-        } else {
-          throw new Error(`Failed to save transactions: ${transactionsError.message}`);
-        }
-      } else {
-        console.log(`✓ Transactions saved: ${transactionsData.length} transaction(s)`);
-      }
-    } else {
-      console.log(`ℹ No transactions to save`);
-    }
-
-
-
-
-  } catch (error) {
-
-    console.error(`✗ Error: ${error.message}`);
+    console.error(`✗ failed to connect: ${error.message}`);
     process.exit(1);
   }
+
+   console.log('Connection test completed successfully');
+   process.exit(0);
 }
 
 /**

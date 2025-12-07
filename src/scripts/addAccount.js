@@ -1,11 +1,8 @@
 
 
 import { SCRAPERS } from '../config/banks.js';
-import fs from 'fs';
-import { createScraper } from 'israeli-bank-scrapers';
-
-
-
+import { scrape } from './scraper.js';
+import { createClient } from '@supabase/supabase-js';
 
 async function main() {
 
@@ -27,49 +24,52 @@ async function main() {
     process.exit(1);
   }
 
+  
 
-  try {
-    // Test connection
-    const scraperOptions = {
-      companyId: bankType,
-      startDate: new Date(Date.now()), // Today
-      args: ["--disable-dev-shm-usage", "--no-sandbox"]
-    };
-    const scraper = createScraper(scraperOptions);
-    const result = await scraper.scrape(credentials);
-    const isConnected = result.accounts && result.accounts.length > 0;
+    // Save data to database
+    try {   
+    //set supabase
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
-    if (!isConnected) {
-      console.error('Connection test failed');
-      process.exit(1);
-    }
+    console.log('Saving data to database...');
+    // Save user account
+    const { data, error } = await supabase
+      .from('bank_user_accounts')
+      .insert([
+        {
+          bank_type: bankType,
+          credentials: credentials,
+        }
+      ])
+      .select();
+    
+    
+    
+    if (error) {
+      // Check if it's a duplicate key error
+      if (error.code === '23505' || error.message.includes('duplicate')) {
+        console.log(`⚠ User account with this bank and credentials already exists.`);
+        process.exit(0);
+      }
+        throw new Error(`Failed to save user account: ${error.message}`);
+        process.exit(1);
+      
+    } 
+    
+    let userAccountId;
+    userAccountId = data[0].id;
+    console.log(`✓ User account saved with ID: ${userAccountId}`);
+   
 
-    // Add account to database
-  //  const accountId = await addBankAccount(bankType, credentials);
 
-    // Save summary
-    const summary = {
-      success: true,
-      //accountId,
-      bankType,
-      bankName: SCRAPERS[bankType].name,
-      createdAt: new Date().toISOString(),
-      //message: `Account successfully created with ID: ${accountId}`,
-    };
+   
 
-    fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
-    console.log(JSON.stringify(summary, null, 2));
 
   } catch (error) {
-    const summary = {
-      success: false,
-      error: error.message,
-      bankType,
-      createdAt: new Date().toISOString(),
-    };
 
-    fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
-    console.error(JSON.stringify(summary, null, 2));
+    console.error(`✗ failed to save data: ${error.message}`);
     process.exit(1);
   }
 }
