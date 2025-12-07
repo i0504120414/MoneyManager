@@ -1,7 +1,6 @@
 
 
 import { SCRAPERS } from '../config/banks.js';
-import { createScraper } from 'israeli-bank-scrapers';
 import fs from 'fs';
 import { scrape } from './scraper.js';
 import { createClient } from '@supabase/supabase-js';
@@ -32,8 +31,11 @@ async function main() {
 
   try {
   
+    //set date to one month ago
+    const today = new Date();
+    const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
     // Test connection
-    const result = await scrape(bankType, credentials, new Date(Date.now()));
+    const result = await scrape(bankType, credentials, oneMonthAgo);//this month
     const isConnected = result.accounts && result.accounts.length > 0;
     
     if (!isConnected) {
@@ -136,29 +138,51 @@ async function main() {
       console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
     }
   
+    const transactionsToInsert = [];
+    for (const account of result.accounts) {
+      if (account.transactions && account.transactions.length > 0) {
+        const mappedTransactions = account.transactions.map(tx => ({
+          bank_account_id: account.accountNumber, // או את ה-ID של החשבון מ-Supabase
+          type: tx.type || 'normal',
+          identifier: tx.identifier || null,
+          date: tx.date,
+          processed_date: tx.processedDate,
+          original_amount: tx.originalAmount,
+          original_currency: tx.originalCurrency,
+          charged_amount: tx.chargedAmount,
+          description: tx.description || '',
+          memo: tx.memo || null,
+          installment_number: tx.installments?.number || null,
+          installment_total: tx.installments?.total || null,
+          status: tx.status || 'completed',
+          created_at: new Date().toISOString()
+        }));
+        
+        transactionsToInsert.push(...mappedTransactions);
+      }
+    }
 
-    // Save summary
-    const summary = {
-      success: true,
-      bankType,
-      bankName: SCRAPERS[bankType].name,
-      createdAt: new Date().toISOString(),
-      message: `Account is connected successfully`,
-    };
+    if (transactionsToInsert.length > 0) {
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .insert(transactionsToInsert)
+        .select();
+        if (transactionsError) {
+            if (transactionsError.code === '23505' || transactionsError.message.includes('duplicate')) {
+                console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
+            } else {
+                throw new Error(`Failed to save transactions: ${transactionsError.message}`);
+            }
+        }
+    }
+    console.log(`✓ Transactions saved: ${transactionsToInsert.length} transaction(s)`);
 
-    fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
-    console.log(JSON.stringify(summary, null, 2));
+
+
 
   } catch (error) {
-    const summary = {
-      success: false,
-      error: error.message,
-      bankType,
-      createdAt: new Date().toISOString(),
-    };
 
-    fs.writeFileSync('account-summary.json', JSON.stringify(summary, null, 2));
-    console.error(JSON.stringify(summary, null, 2));
+    console.error(`✗ Error: ${error.message}`);
     process.exit(1);
   }
 }
