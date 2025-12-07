@@ -34,6 +34,7 @@ async function main() {
     //set date to one month ago
     const today = new Date();
     const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    console.log(`Testing connection for bank: ${bankType} from ${oneMonthAgo.toISOString().split('T')[0]}`);
     // Test connection
     const result = await scrape(bankType, credentials, oneMonthAgo);//this month
     const isConnected = result.accounts && result.accounts.length > 0;
@@ -48,7 +49,7 @@ async function main() {
     console.log(`  Found ${result.accounts.length} account(s)`);
     
     result.accounts.forEach(account => {
-      console.log(`    - Account ID: ${account.accountNumber || 'N/A'}, Balance: ${account.balance || 0}`);
+      console.log(`    - Account ID: ${account.accountNumber || 'N/A'}, Balance: ${account.balance || 0}, Transactions: ${account.txns ? account.txns.length : 0}`);
 
     });
 
@@ -59,6 +60,7 @@ async function main() {
     const supabaseKey = process.env.SUPABASE_KEY;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    console.log('Saving data to database...');
     // Save user account
     const { data, error } = await supabase
       .from('bank_user_accounts')
@@ -96,6 +98,7 @@ async function main() {
     }
 
     // Save each bank account
+    console.log('Saving bank accounts to database...');
     const accountsToInsert = result.accounts.map(account => ({
       user_account_id: userAccountId,
       account_number: account.accountNumber || '',
@@ -137,7 +140,10 @@ async function main() {
     } else {
       console.log(`✓ Bank accounts saved with ${accountsData.length} account(s)`);
     }
-  
+
+
+    // Save transactions
+    console.log('Saving transactions to database...');
     const transactionsToInsert = [];
     for (const account of result.accounts) {
       if (account.transactions && account.transactions.length > 0) {
