@@ -112,6 +112,8 @@ async function main() {
       .insert(accountsToInsert)
       .select();
     
+    let savedAccountsData = accountsData;
+    
     if (accountsError) {
       // Check if it's a duplicate key error
       if (accountsError.code === '23505' || accountsError.message.includes('duplicate')) {
@@ -123,18 +125,28 @@ async function main() {
             .from('bank_accounts')
             .update({
               balance: account.balance,
-              last_updated: account.last_updated,
+              last_updated: new Date().toISOString(),
               is_active: true
             })
             .eq('user_account_id', userAccountId)
-            .eq('account_number', account.account_number)
-            .select();
+            .eq('account_number', account.account_number);
           
           if (updateError) {
             console.log(`⚠ Failed to update account ${account.account_number}: ${updateError.message}`);
           }
         }
         console.log(`✓ Accounts updated with ${result.accounts.length} account(s)`);
+        
+        // Fetch the updated accounts to get their IDs
+        const { data: fetchedAccounts, error: fetchError } = await supabase
+          .from('bank_accounts')
+          .select('id, account_number')
+          .eq('user_account_id', userAccountId);
+        
+        if (fetchError) {
+          throw new Error(`Failed to fetch bank accounts: ${fetchError.message}`);
+        }
+        savedAccountsData = fetchedAccounts;
       } else {
         throw new Error(`Failed to save bank accounts: ${accountsError.message}`);
       }
@@ -149,8 +161,8 @@ async function main() {
     
     // Create a map of account numbers to their Supabase IDs
     const accountMap = {};
-    if (accountsData && accountsData.length > 0) {
-      accountsData.forEach(acc => {
+    if (savedAccountsData && savedAccountsData.length > 0) {
+      savedAccountsData.forEach(acc => {
         accountMap[acc.account_number] = acc.id;
       });
     }
