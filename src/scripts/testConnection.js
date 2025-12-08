@@ -2,7 +2,7 @@
 
 import { SCRAPERS } from '../config/banks.js';
 import { scrape } from './scraper.js';
-import { createClient } from '@supabase/supabase-js';
+
 
 async function main() {
 
@@ -23,6 +23,8 @@ async function main() {
     console.error('No credentials provided');
     process.exit(1);
   }
+
+  console.log('Credentials:', credentials);
 
   // Test connection
   try {
