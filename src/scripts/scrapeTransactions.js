@@ -66,10 +66,20 @@ async function main() {
     const tnxsList = [];
     result.accounts.forEach(acc => {
 
+      {data: accountData, error: accountError} = await supabase
+      .from('bank_accounts')
+      .select('id')
+      .eq('user_account_id', accountId)
+      .eq('account_number', acc.accountNumber)
+      .single();
+      if (accountError) {
+        throw new Error(`Failed to fetch bank account for transactions: ${accountError.message}`);
+        process.exit(1);
+      }
       const accountNumber = acc.accountNumber || 'N/A';
       if (acc.txns && acc.txns.length > 0) {
           tnxsList.push(...acc.txns.map(tx => ({
-          account_id: accountNumber,
+          account_id: accountData.id,
           identifier: tx.identifier || null,
           date: tx.date,
           processed_date: tx.processedDate || null,
