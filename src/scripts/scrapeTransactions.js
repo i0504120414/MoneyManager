@@ -80,7 +80,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
       }
       console.log('accountData:', accountData);
       console.log(`Mapped to bank_accounts ID: ${accountData.id}`);
-      
+      console.log(`Found ${acc.txns ? acc.txns.length : 0} transaction(s) for this account`);
       if (acc.txns && acc.txns.length > 0) {
           tnxsList.push(...acc.txns.map(tx => ({
           account_id: accountData.id,
