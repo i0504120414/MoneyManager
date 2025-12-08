@@ -5,11 +5,12 @@ import { createClient } from '@supabase/supabase-js';
 
 
 async function main() {
+
   const accountId = process.env.ACCOUNT_ID;
   const scrapingMode = process.env.SCRAPING_MODE || 'update';
   let startDate = process.env.START_DATE;
   
-
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
   if (!accountId) {
     console.error('ACCOUNT_ID environment variable is required');
     process.exit(1);
@@ -99,7 +100,7 @@ async function main() {
     console.log('✓ Scraping completed successfully');
     console.log(`found ${tnxsList.length} transaction(s)`);
     
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+    
     // Save transactions to database
     console.log('Saving transactions to database...');
     
