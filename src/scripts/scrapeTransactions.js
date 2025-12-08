@@ -78,7 +78,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
         throw new Error(`Failed to fetch bank account for transactions: ${accountError.message}`);
         process.exit(1);
       }
-      const accountNumber = acc.accountNumber || 'N/A';
+      console.log('accountData:', accountData);
+      console.log(`Mapped to bank_accounts ID: ${accountData.id}`);
+      
       if (acc.txns && acc.txns.length > 0) {
           tnxsList.push(...acc.txns.map(tx => ({
           account_id: accountData.id,
