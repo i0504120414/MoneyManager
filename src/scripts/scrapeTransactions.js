@@ -1,6 +1,6 @@
 
 import { getAccountDetails , getAccountChildren} from "./listAccounts.js";
-import { scrape } from "./scraper";
+import { scrape } from "./scraper.js";
 import { createClient } from '@supabase/supabase-js';
 
 
