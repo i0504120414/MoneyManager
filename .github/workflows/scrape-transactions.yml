@@ -16,8 +16,7 @@ on:
         options:
           - regular
           - update
-          - deep
-          - custom
+          - max
       
       start_date:
         description: 'Start Date (ISO format, for custom mode only)'

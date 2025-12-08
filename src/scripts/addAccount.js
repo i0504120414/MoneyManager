@@ -1,7 +1,6 @@
 
 
 import { SCRAPERS } from '../config/banks.js';
-import { scrape } from './scraper.js';
 import { createClient } from '@supabase/supabase-js';
 
 async function main() {

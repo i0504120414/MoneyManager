@@ -1,55 +1,137 @@
+import { createClient } from '@supabase/supabase-js';
 
-import { listAccounts } from '../services/accountService.js';
-import fs from 'fs';
+export
+async function getAccountDetails() {
 
-async function main() {
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_KEY;
+  const accountId = process.env.ACCOUNT_ID;
+
+  if (!accountId) {
+    console.error('ACCOUNT_ID environment variable is required');
+    process.exit(1);
+  }
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('SUPABASE_URL and SUPABASE_KEY environment variables are required');
+    process.exit(1);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  console.log('Listing accounts for ACCOUNT_ID:', accountId);
+  
   try {
-    console.log('\n📋 Fetching all bank accounts...\n');
-
-    const accounts = await listAccounts();
-
-    if (accounts.length === 0) {
-      console.log('No accounts found');
-      fs.writeFileSync('accounts-list.json', JSON.stringify({ accounts: [], total: 0 }, null, 2));
-      return;
+    const { data, error } = await supabase
+      .from('bank_user_accounts')
+      .select('*')
+      .eq('id', accountId)
+      .single();
+    if (error) {
+      throw new Error(`Failed to fetch account: ${error.message}`);
     }
+    if (!data) {
+      throw new Error('No account found with the provided ACCOUNT_ID');
+    }
+    console.log('Account details:');
+    console.log('account bank type:', data.bank_type);
+    console.log('account credentials:', data.credentials);
+    console.log('account created at:', data.created_at);
 
-    // Remove sensitive data before displaying
-    const safeAccounts = accounts.map(account => ({
-      id: account.id,
-      bankType: account.bank_type,
-      createdAt: account.created_at,
-      lastUpdated: account.last_updated,
-      isActive: account.is_active,
-    }));
-
-    console.log('📌 Bank Accounts:');
-    console.log('─'.repeat(80));
-    safeAccounts.forEach((acc, index) => {
-      console.log(`${index + 1}. ID: ${acc.id}`);
-      console.log(`   Bank: ${acc.bankType}`);
-      console.log(`   Created: ${acc.createdAt}`);
-      console.log(`   Last Updated: ${acc.lastUpdated}`);
-      console.log(`   Active: ${acc.isActive}`);
-      console.log('');
-    });
-
-    const summary = {
-      total: accounts.length,
-      accounts: safeAccounts,
-      generatedAt: new Date().toISOString(),
-    };
-
-    fs.writeFileSync('accounts-list.json', JSON.stringify(summary, null, 2));
-    console.log(`✓ Total accounts: ${accounts.length}`);
-
-  } catch (error) {
-    console.error(`✗ Failed to list accounts: ${error.message}`);
+    return data;
+  } 
+  catch (error) {
+    console.error(`✗ failed to list account: ${error.message}`);
     process.exit(1);
   }
 }
 
-main().catch(error => {
+getAccountDetails().catch(error => {
+  console.error('Unexpected error:', error);
+  process.exit(1);
+});
+
+export async function listAccounts() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('SUPABASE_URL and SUPABASE_KEY environment variables are required');
+    process.exit(1);
+  }
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('Listing all bank user accounts...');
+  try {
+    const { data, error } = await supabase
+      .from('bank_user_accounts')
+      .select('*');
+    if (error) {
+      throw new Error(`Failed to fetch accounts: ${error.message}`);
+    }
+    if (!data) {
+      throw new Error('No accounts found');
+    }
+    console.log('Accounts:', data);
+    return data;
+  } catch (error) {
+    console.error(`✗ failed to list accounts: ${error.message}`);
+    process.exit(1);
+  }
+}
+listAccounts().catch(error => {
+  console.error('Unexpected error:', error);
+  process.exit(1);
+});
+
+
+export
+async function getAccountChildren() {
+
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_KEY;
+  const accountId = process.env.ACCOUNT_ID;
+
+  if (!accountId) {
+    console.error('ACCOUNT_ID environment variable is required');
+    process.exit(1);
+  }
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('SUPABASE_URL and SUPABASE_KEY environment variables are required');
+    process.exit(1);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  console.log('Listing accounts for ACCOUNT_ID:', accountId);
+  
+  try {
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('*')
+      .eq('user_account_id', accountId)
+      
+    if (error) {
+      throw new Error(`Failed to fetch account: ${error.message}`);
+    }
+    if (!data) {
+      throw new Error('No account found with the provided ACCOUNT_ID');
+    }
+    console.log('Child account details:');
+    data.forEach(account => {
+      console.log('account id:', account.id);
+      console.log('account number:', account.account_number);
+      console.log('last updated:', account.last_updated);
+
+    });
+    return data;
+  } 
+  catch (error) {
+    console.error(`✗ failed to list account: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+getAccountChildren().catch(error => {
   console.error('Unexpected error:', error);
   process.exit(1);
 });
