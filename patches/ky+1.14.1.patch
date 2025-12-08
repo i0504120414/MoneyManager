@@ -1,0 +1,13 @@
+diff --git a/node_modules/ky/distribution/core/Ky.js b/node_modules/ky/distribution/core/Ky.js
+index f67b53a..0394ce1 100644
+--- a/node_modules/ky/distribution/core/Ky.js
++++ b/node_modules/ky/distribution/core/Ky.js
+@@ -139,7 +139,7 @@ export class Ky {
+             prefixUrl: String(options.prefixUrl || ''),
+             retry: normalizeRetryOptions(options.retry),
+             throwHttpErrors: options.throwHttpErrors ?? true,
+-            timeout: options.timeout ?? 10_000,
++            timeout: options.timeout ?? 180_000,
+             fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
+             context: options.context ?? {},
+         };

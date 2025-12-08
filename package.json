@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
-    "israeli-bank-scrapers": "^6.3.7"
+    "israeli-bank-scrapers": "^6.3.7",
+    "ky": "^1.14.1"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"
