@@ -53,11 +53,13 @@ async function main() {
   try {
     const result = await scrape(accountId, credentials, startDate);
 
+    console.log('result status:', result.success);
     if(!result.success) {
       throw new Error(result.error || 'Scraping failed without a specific error message');
       process.exit(1);
     }
 
+    
     const tnxsList = [];
     result.accounts.forEach(acc => {
 
