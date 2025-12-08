@@ -18,7 +18,7 @@ export async function getAccountDetails() {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  console.log('Listing accounts for ACCOUNT_ID:', accountId);
+  console.log('get account details for ACCOUNT_ID:', accountId);
   
   try {
     const { data, error } = await supabase
@@ -45,12 +45,9 @@ export async function getAccountDetails() {
   }
 }
 
-getAccountDetails().catch(error => {
-  console.error('Unexpected error:', error);
-  process.exit(1);
-});
 
-export async function listAccounts() {
+
+export async function getListAccounts() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_KEY;
   if (!supabaseUrl || !supabaseKey) {
@@ -76,10 +73,7 @@ export async function listAccounts() {
     process.exit(1);
   }
 }
-listAccounts().catch(error => {
-  console.error('Unexpected error:', error);
-  process.exit(1);
-});
+
 
 
 export
@@ -130,7 +124,3 @@ async function getAccountChildren() {
   }
 }
 
-getAccountChildren().catch(error => {
-  console.error('Unexpected error:', error);
-  process.exit(1);
-});
