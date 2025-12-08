@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-export
-async function getAccountDetails() {
+export async function getAccountDetails() {
 
 
   const supabaseUrl = process.env.SUPABASE_URL;
