@@ -67,6 +67,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
     const tnxsList = [];
     result.accounts.forEach(async (acc) => {
 
+      console.log(`Processing account: ${acc.accountNumber || 'N/A' } with ${acc.txns ? acc.txns.length : 0} transaction(s)`);
       const {data: accountData, error :accountError} = await supabase
       .from('bank_accounts')
       .select('id')
