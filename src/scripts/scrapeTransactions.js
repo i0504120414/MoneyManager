@@ -51,9 +51,10 @@ async function main() {
 
   const accountDetails = await getAccountDetails();
   const credentials = accountDetails.credentials;
+  const bankType = accountDetails.bank_type;
 
   try {
-    const result = await scrape(accountId, credentials, startDate);
+    const result = await scrape(bankType, credentials, startDate);
 
     console.log('result status:', result.success);
     if(!result.success) {
