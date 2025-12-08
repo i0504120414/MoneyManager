@@ -64,9 +64,9 @@ async function main() {
 
     
     const tnxsList = [];
-    result.accounts.forEach(acc => {
+    result.accounts.forEach(async (acc) => {
 
-      {data: accountData, error: accountError} = await supabase
+      const {data: accountData, error :accountError} = await supabase
       .from('bank_accounts')
       .select('id')
       .eq('user_account_id', accountId)
