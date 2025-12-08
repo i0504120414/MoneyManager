@@ -32,7 +32,7 @@ async function main() {
   if (scrapingMode === 'max') {
     // Default to 30 days ago if no last scrape date
         const today = new Date();
-        return new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
   }
 
   if (scrapingMode === 'update') {
