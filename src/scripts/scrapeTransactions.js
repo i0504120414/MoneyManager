@@ -30,11 +30,13 @@ async function main() {
   }
 
   if (scrapingMode === 'max') {
-    startDate = null; // Scrape all available transactions
+    // Default to 30 days ago if no last scrape date
+        const today = new Date();
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
   }
 
   if (scrapingMode === 'update') {
-    startDate = getAccountDetails().then(details => {
+    startDate =  await getAccountDetails().then(details => {
       const lastScrape = details.last_scraped_at;
       if (lastScrape) {
         return new Date(lastScrape);
