@@ -122,7 +122,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
     // Update last_scraped_at in bank_accounts
     const { data: updateData, error: updateError } = await supabase
       .from('bank_accounts')
-      .update({ last_scraped_at: new Date().toISOString() })
+      .update({ last_updated: new Date().toISOString() })
       .eq('id', accountId);
 
     if (updateError) {
