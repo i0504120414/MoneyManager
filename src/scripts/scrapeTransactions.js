@@ -1,5 +1,5 @@
 
-import { getAccountDetails , getAccountChildren} from "./listAccounts";
+import { getAccountDetails , getAccountChildren} from "./listAccounts.js";
 import { scrape } from "./scraper";
 import { createClient } from '@supabase/supabase-js';
 
@@ -58,7 +58,27 @@ async function main() {
       process.exit(1);
     }
 
-    const tnxsList = result.accounts.flatMap(account => account.txns || []);
+    const tnxsList = [];
+    result.accounts.forEach(acc => {
+
+      const accountNumber = acc.accountNumber || 'N/A';
+      if (acc.txns && acc.txns.length > 0) {
+          tnxsList.push(...acc.txns.map(tx => ({
+          account_id: accountNumber,
+          identifier: tx.identifier || null,
+          date: tx.date,
+          processed_date: tx.processedDate || null,
+          original_amount: tx.originalAmount || 0,
+          original_currency: tx.originalCurrency || 'ILS',
+          charged_amount: tx.chargedAmount || 0,
+          description: tx.description || '',
+          memo: tx.memo || null,
+          type: tx.type || 'normal',
+          installment_number: tx.installments?.number || null,
+          installment_total: tx.installments?.total || null,
+        })));
+      }
+    });
 
 
     console.log('✓ Scraping completed successfully');
@@ -88,7 +108,7 @@ async function main() {
       process.exit(1);
     }
     console.log('✓ last_scraped_at updated successfully');
-    
+
 
    
   
