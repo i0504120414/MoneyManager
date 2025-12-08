@@ -114,16 +114,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
       if (error) {
         if (error.code === '23505' || error.message.includes('duplicate')) {
           console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
-          return;
-
         } else {
-        throw new Error(`Failed to save transactions: ${error.message}`);
+          throw new Error(`Failed to save transactions: ${error.message}`);
+        }
+      } else {
+        console.log(`✓ Transactions saved: ${data ? data.length : 0} transaction(s)`);
       }
-      }
-      console.log(`✓ Transactions saved: ${data ? data.length : 0} transaction(s)`);
-    } else {
-      console.log('ℹ No transactions to save');
     }
+    console.log(`${tnxsList.length} transactions processed successfully` );
 
     // Update last_scraped_at in bank_accounts
     const { data: updateData, error: updateError } = await supabase
