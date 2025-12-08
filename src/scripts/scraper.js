@@ -26,6 +26,7 @@ async function scrape(bank_type, credentials,startDate) {
   try {
     const result = await scraper.scrape(credentials);
     console.log(`✓ Scraping completed for bank: ${bank_type}`);
+    console.log('Scrape result:', result);
     return result;
   } catch (error) {
     console.error(`✗ Scraping failed: ${error.message}`);
