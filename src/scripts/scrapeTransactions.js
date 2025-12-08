@@ -114,7 +114,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
       if (error) {
         if (error.code === '23505' || error.message.includes('duplicate')) {
           console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
-          process.exit(0);
+          return;
 
         } else {
         throw new Error(`Failed to save transactions: ${error.message}`);
