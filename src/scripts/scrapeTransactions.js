@@ -65,7 +65,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
     
     const tnxsList = [];
-    result.accounts.forEach(async (acc) => {
+    for (const acc of result.accounts) {
 
       console.log(`Processing account: ${acc.accountNumber || 'N/A' } with ${acc.txns ? acc.txns.length : 0} transaction(s)`);
       const {data: accountData, error :accountError} = await supabase
@@ -76,7 +76,6 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
       .single();
       if (accountError) {
         throw new Error(`Failed to fetch bank account for transactions: ${accountError.message}`);
-        process.exit(1);
       }
       console.log('accountData:', accountData);
       console.log(`Mapped to bank_accounts ID: ${accountData.id}`);
@@ -97,7 +96,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
           installment_total: tx.installments?.total || null,
         })));
       }
-    });
+    }
 
 
     console.log('✓ Scraping completed successfully');
@@ -107,14 +106,18 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
     // Save transactions to database
     console.log('Saving transactions to database...');
     
-    const {data , error} = await supabase
-      .from('transactions')
-      .insert(tnxsList);
+    if (tnxsList.length > 0) {
+      const {data , error} = await supabase
+        .from('transactions')
+        .insert(tnxsList)
+        .select();
       if (error) {
         throw new Error(`Failed to save transactions: ${error.message}`);
-        process.exit(1);
       }
-      console.log(`✓ Transactions saved: ${data.length} transaction(s)`);
+      console.log(`✓ Transactions saved: ${data ? data.length : 0} transaction(s)`);
+    } else {
+      console.log('ℹ No transactions to save');
+    }
 
     // Update last_scraped_at in bank_accounts
     const { data: updateData, error: updateError } = await supabase
