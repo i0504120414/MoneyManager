@@ -6,22 +6,22 @@ import { createScraper } from 'israeli-bank-scrapers';
 // @param {Date} startDate - Start date for transactions
 // @returns {Promise<Object>} - Scrape result
 export
-async function scrape(bank_type, credentials,startDate) {
+async function scrape(bank_type, credentials, startDate) {
   
     // Log scraping start
     console.log(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
-
 
     const scraperOptions = {
     companyId: bank_type,
     startDate: startDate,
     args: ["--disable-dev-shm-usage", "--no-sandbox"],
-    vebrose: true
+    // Desktop viewport size to avoid mobile detection
+    viewportSize: { width: 1920, height: 1080 },
+    navigationRetryCount: 3,
+    verbose: true
   };
 
-
   const scraper = createScraper(scraperOptions);
-
 
   try {
     const result = await scraper.scrape(credentials);
@@ -32,8 +32,4 @@ async function scrape(bank_type, credentials,startDate) {
     console.error(`✗ Scraping failed: ${error.message}`);
     return { success: false, error: error.message };
   }
-
- 
-
-
 }
