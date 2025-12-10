@@ -160,10 +160,11 @@ jobs:
             money-manager:latest \
             src/scripts/addAccount.js
       
-      # - name: Upload Summary
-      #   if: always()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: account-setup-summary
-      #     path: account-summary.json
-      #     retention-days: 30
+      - name: Upload error screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: add-account-screenshots-${{ github.run_id }}
+          path: screenshots/
+          retention-days: 30
+          if-no-files-found: ignore
