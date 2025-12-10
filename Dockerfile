@@ -54,7 +54,7 @@ COPY --from=builder /app/package-lock.json ./
 COPY src ./src
 COPY patches ./patches
 COPY database.sql ./.env.example ./
-COPY --from=builder /app/dst ./dst
+
 
 WORKDIR /app
 
