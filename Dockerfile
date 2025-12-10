@@ -16,7 +16,8 @@ COPY package.json package-lock.json ./
 COPY patches ./patches
 
 # Install dependencies (ignore postinstall script initially)
-RUN npm ci
+RUN npm ci --ignore-scripts && \
+    npx patch-package
 
 COPY src ./src
 COPY database.sql ./.env.example ./
