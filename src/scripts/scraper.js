@@ -45,17 +45,26 @@ export async function scrape(bank_type, credentials, startDate) {
 
   try {
     const result = await scraper.scrape(credentials);
-    console.log(`��� Scraping completed for bank: ${bank_type}`);
+    console.log(`✓ Scraping completed for bank: ${bank_type}`);
     console.log('Scrape result:', result);
+    
+    // If scraper returned failure, log details
+    if (!result.success) {
+      console.error(`[ERROR] Scraper reported failure:`);
+      console.error(`  Error Type: ${result.errorType}`);
+      console.error(`  Error Message: ${result.errorMessage}`);
+    }
+    
     return result;
   } catch (error) {
-    console.error(`��� Scraping failed: ${error.message}`);
+    console.error(`✗ Scraping failed with exception: ${error.message}`);
+    console.error(`Stack: ${error.stack}`);
     // Check if screenshot was saved
     if (screenshotPath) {
       try {
         const exists = await fs.access(screenshotPath).then(() => true).catch(() => false);
         if (exists) {
-          console.log(`���� Screenshot saved at: ${screenshotPath}`);
+          console.log(`📸 Screenshot saved at: ${screenshotPath}`);
         }
       } catch (e) {
         // Ignore

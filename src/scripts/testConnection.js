@@ -60,9 +60,31 @@ async function main() {
     const result = await scrape(bankType, credentials, startDate);
     
     logger('Scrape completed', { 
+      success: result.success,
       accountsFound: result.accounts?.length || 0,
+      errorType: result.errorType,
+      errorMessage: result.errorMessage,
       elapsedSeconds: Math.round((Date.now() - startTime) / 1000)
     });
+
+    // Check if scraper returned an error
+    if (!result.success) {
+      logger('Error: Scraper returned failure', {
+        errorType: result.errorType,
+        errorMessage: result.errorMessage
+      });
+      
+      // Provide helpful error messages
+      if (result.errorType === 'INVALID_CREDENTIALS') {
+        logger('⚠️  Invalid credentials - please check your username and password');
+      } else if (result.errorMessage?.includes('invalid json')) {
+        logger('⚠️  API returned invalid response - may be authentication issue or service error');
+      } else if (result.errorMessage?.includes('timeout')) {
+        logger('⚠️  Request timeout - service may be slow or unavailable');
+      }
+      
+      process.exit(1);
+    }
 
     // Validate results
     const isConnected = result.accounts && result.accounts.length > 0;
