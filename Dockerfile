@@ -1,5 +1,5 @@
 # Build stage
-FROM node:lastest AS builder
+FROM node:22 AS builder
 
 # Install curl for certificate handling
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
