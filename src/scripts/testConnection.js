@@ -3,61 +3,105 @@
 import { SCRAPERS } from '../config/banks.js';
 import { scrape } from './scraper.js';
 
+// Logger utility with timestamps
+function createLogger(context) {
+  return (message, data = {}) => {
+    const timestamp = new Date().toISOString();
+    const dataStr = Object.keys(data).length > 0 ? ` | ${JSON.stringify(data)}` : '';
+    console.log(`[${timestamp}] [${context}] ${message}${dataStr}`);
+  };
+}
 
 async function main() {
+  const logger = createLogger('TestConnection');
+  const startTime = Date.now();
 
-  // Get bank type from environment variable
-  const bankType = process.env.BANK_TYPE;
-  
-  // Validate bank type.
-  if (!bankType || !SCRAPERS[bankType]) {
-    console.error(`Invalid bank type: ${bankType}`);
-    process.exit(1);
-  }
-
-  // Build credentials object from environment variables
-  const credentials = buildCredentials(bankType);
-
-  // Validate credentials
-  if (Object.keys(credentials).length === 0) {
-    console.error('No credentials provided');
-    process.exit(1);
-  }
-
-  console.log('Credentials:', credentials);
-
-  // Test connection
   try {
-  
-    //set date to one month ago
+    logger('About to start test');
+
+    // Get bank type from environment variable
+    const bankType = process.env.BANK_TYPE;
+    
+    // Validate bank type
+    if (!bankType || !SCRAPERS[bankType]) {
+      logger('Error: Invalid bank type', { bankType, validTypes: Object.keys(SCRAPERS) });
+      process.exit(1);
+    }
+
+    logger('Bank type validated', { bankType, bankName: SCRAPERS[bankType].name });
+
+    // Build credentials object from environment variables
+    const credentials = buildCredentials(bankType);
+
+    // Validate credentials
+    if (Object.keys(credentials).length === 0) {
+      logger('Error: No credentials provided', { requiredFields: SCRAPERS[bankType].loginFields });
+      process.exit(1);
+    }
+
+    logger('Credentials loaded', { 
+      providedFields: Object.keys(credentials),
+      requiredFields: SCRAPERS[bankType].loginFields 
+    });
+
+    // Calculate date range
     const today = new Date();
-    const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-    console.log(`Testing connection for bank: ${bankType} from ${oneMonthAgo.toISOString().split('T')[0]}`);
-    // Test connection
-    const result = await scrape(bankType, credentials, oneMonthAgo);//this month
+    const monthsBack = parseInt(process.env.MONTHS_BACK || '1', 10);
+    const startDate = new Date(today.getFullYear(), today.getMonth() - monthsBack, today.getDate());
+    const dateRange = `${startDate.toISOString().split('T')[0]} to ${today.toISOString().split('T')[0]}`;
+    
+    logger('Starting scrape', { 
+      bankType, 
+      dateRange,
+      monthsBack 
+    });
+
+    // Run scraper
+    const result = await scrape(bankType, credentials, startDate);
+    
+    logger('Scrape completed', { 
+      accountsFound: result.accounts?.length || 0,
+      elapsedSeconds: Math.round((Date.now() - startTime) / 1000)
+    });
+
+    // Validate results
     const isConnected = result.accounts && result.accounts.length > 0;
     
     if (!isConnected) {
-      console.error('Connection test failed');
+      logger('Error: No accounts found in response');
       process.exit(1);
     }
 
     // Log connected accounts
-    console.log(`✓ Successfully connected to ${SCRAPERS[bankType].name}`);
-    console.log(`  Found ${result.accounts.length} account(s)`);
-    
-    result.accounts.forEach(account => {
-      console.log(`    - Account ID: ${account.accountNumber || 'N/A'}, Balance: ${account.balance || 0}, Transactions: ${account.txns ? account.txns.length : 0}`);
-
+    logger(`✓ Successfully connected to ${SCRAPERS[bankType].name}`, { 
+      accountCount: result.accounts.length 
     });
-    } catch (error) {
+    
+    result.accounts.forEach((account, index) => {
+      const txnCount = account.txns ? account.txns.length : 0;
+      logger(`Account ${index + 1}`, {
+        accountNumber: account.accountNumber || 'N/A',
+        accountType: account.type || 'N/A',
+        balance: account.balance || 0,
+        transactions: txnCount,
+        currency: account.currency || 'ILS'
+      });
+    });
 
-    console.error(`✗ failed to connect: ${error.message}`);
+    logger('Connection test completed successfully', { 
+      totalTime: Math.round((Date.now() - startTime) / 1000) + 's'
+    });
+    process.exit(0);
+
+  } catch (error) {
+    logger('Error during scrape', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack?.split('\n').slice(0, 3).join(' | '),
+      elapsedSeconds: Math.round((Date.now() - startTime) / 1000)
+    });
     process.exit(1);
   }
-
-   console.log('Connection test completed successfully');
-   process.exit(0);
 }
 
 /**
