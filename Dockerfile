@@ -25,10 +25,7 @@ COPY database.sql ./.env.example ./
 FROM node:slim AS runner
 
 
-RUN npm run build && \
-    npm prune --omit=dev && \
-    npm cache clean --force && \
-    rm -rf src
+RUN npm run build && npm prune --production
 
 
 ENV NODE_ENV=production
