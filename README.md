@@ -152,6 +152,95 @@ SUPABASE_URL=your_url SUPABASE_KEY=your_key \
 node src/scripts/listAccounts.js
 ```
 
+## 🐛 Debugging
+
+### Viewing Detailed Logs
+
+Each script includes comprehensive logging with timestamps and context. To enable debug logging for specific scrapers:
+
+```bash
+# Enable debug logs for visa-cal scraper
+DEBUG=visa-cal node src/scripts/testConnection.js
+
+# Enable debug logs for all scrapers
+DEBUG=* node src/scripts/testConnection.js
+```
+
+### Understanding Error Messages
+
+- **`invalid json response`** - Usually indicates authentication failure or API communication issue
+- **`INVALID_CREDENTIALS`** - Incorrect username/password
+- **`timeout`** - Bank service slow or temporarily unavailable
+- **`EXCEPTION`** - Unexpected error during scraping
+
+### Screenshots on Failure
+
+When scraping fails, screenshots are automatically captured in the `screenshots/` directory (local) or uploaded as GitHub artifacts (in workflows). These help visualize where the authentication or scraping process broke down.
+
+### Checking GitHub Actions Logs
+
+1. Go to **Actions** → Select workflow
+2. Click on the failed workflow run
+3. Expand the relevant step (e.g., "Run scraper with Visa Cal")
+4. Look for:
+   - `[VISA-CAL]` prefixed debug messages showing request/response flow
+   - timestamps indicating where the process stalled
+   - error details with HTTP status codes
+
+### Common Issues and Solutions
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "invalid json response" on Visa Cal | Authentication header malformed or expired session | Check credentials, ensure card_6_digits is valid |
+| Timeout errors | Network issue or bank service slow | Retry workflow or check bank status |
+| "text is not iterable" | Missing required credentials | Verify all required fields for bank type are set |
+| Screenshot saved but no transactions | Auth succeeded but data fetch failed | Check bank account status, ensure transactions exist in date range |
+
+## 📊 Docker Usage
+
+The system runs in Docker containers for consistent execution across environments. To build and test locally:
+
+```bash
+# Build Docker image
+docker build -t money-manager:latest .
+
+# Run scraper in Docker with logging
+docker run --rm \
+  -e BANK_TYPE=visaCal \
+  -e USER_CODE=your_user_code \
+  -e PASSWORD=your_password \
+  -e CARD_6_DIGITS=123456 \
+  -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+  money-manager:latest \
+  src/scripts/testConnection.js
+```
+
+## 📝 Environment Variables
+
+### Scraper Configuration
+- `BANK_TYPE` - Bank identifier (e.g., `visaCal`, `hapoalim`)
+- `USER_CODE` / `USERNAME` - Bank login username
+- `PASSWORD` - Bank login password
+- `MONTHS_BACK` - How many months of transactions to fetch (default: 1)
+
+### Database Configuration  
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_KEY` - Supabase API key
+
+### Puppeteer Configuration
+- `PUPPETEER_EXECUTABLE_PATH` - Path to Chromium binary
+- `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` - Skip downloading Chromium
+
+## 🔗 Links
+
+- [Israeli Bank Scrapers](https://github.com/eshaham/israeli-bank-scrapers)
+- [Supabase Documentation](https://supabase.com/docs)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+
+SUPABASE_URL=your_url SUPABASE_KEY=your_key \
+node src/scripts/listAccounts.js
+```
+
 ## 🔐 Security Considerations
 
 1. **Never commit credentials** - Always use GitHub Secrets
