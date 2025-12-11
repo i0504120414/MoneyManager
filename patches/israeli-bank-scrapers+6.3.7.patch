@@ -1,5 +1,5 @@
 ﻿diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..8f45c2d 100644
+index 1fb11a7..f2b4c10 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -11,6 +11,43 @@ index 1fb11a7..8f45c2d 100644
    Origin: 'https://www.cal-online.co.il',
    Referer: 'https://www.cal-online.co.il/',
    'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+@@ -179,7 +179,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       if (!frame) return null;
+       return frame;
+     }, 'wait for iframe with login form',
+-    10000,
++    60000,
+     1000);
+   }
+   async getCards(page) {
+@@ -194,7 +194,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       if (!initData) return null;
+       return initData;
+     }, 'get init data in session storage',
+-    10000,
++    60000,
+     1000);
+     const cards = initData.Cards.map(c => ({
+       last4Digits: c.Last4Digits,
+@@ -204,13 +204,13 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+   async getAuthorizationHeader(page) {
+     return (0, _waiting.waitUntil)(async () => {
+       const accessToken = await (0, _storage.getFromSessionStorage)(page, 'cal-accessToken');
+       return accessToken ? `Bearer ${accessToken}` : null;
+     }, 'get authorization header with valid token in session storage',
+-    10000,
++    60000,
+     50);
+   }
+   async getLoginOptions(page) {
+     const request = await Promise.race([page.waitForNavigation({
+       waitUntil: 'networkidle0'
+     }), page.waitForRequest(_definitions.SSO_AUTHORIZATION_REQUEST_ENDPOINT, {
+-      timeout: 10000
++      timeout: 60000
+     })]);
+     const token = request.url().includes('login') ? null : request.url().split('?')[1];
+     return {
 @@ -266,14 +266,14 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
            'Content-Type': 'application/json',
            ...apiHeaders
