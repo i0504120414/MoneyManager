@@ -106,7 +106,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-          DEBUG: 'visa-cal'
+          DEBUG: '*'
         run: |
           docker run --rm \
             -e BANK_TYPE="$BANK_TYPE" \
@@ -125,7 +125,7 @@ jobs:
             -e SUPABASE_KEY="$SUPABASE_KEY" \
             -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-            -e DEBUG='visa-cal' \
+            -e DEBUG='*' \
             ghcr.io/i0504120414/moneymanager:latest \
             src/scripts/testConnection.js
       
@@ -148,7 +148,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-          DEBUG: 'visa-cal'
+          DEBUG: '*'
           
         run: |
           docker run --rm \
@@ -168,7 +168,7 @@ jobs:
             -e SUPABASE_KEY="$SUPABASE_KEY" \
             -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-            -e DEBUG='visa-cal' \
+            -e DEBUG='*' \
             ghcr.io/i0504120414/moneymanager:latest \
             src/scripts/addAccount.js
       
