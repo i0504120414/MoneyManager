@@ -43,6 +43,20 @@ export async function scrape(bank_type, credentials, startDate) {
 
   const scraper = createScraper(scraperOptions);
 
+  // Suppress cleanup errors that happen after successful scraping
+  const originalConsoleError = console.error;
+  let cleanupError = null;
+  console.error = function(...args) {
+    const message = (args[0] || '').toString();
+    if (message.includes('Cleanup function failed') || 
+        message.includes('No target with given id found') ||
+        message.includes('Target.closeTarget')) {
+      cleanupError = message;
+      return; // Silently ignore cleanup errors
+    }
+    originalConsoleError.apply(console, args);
+  };
+
   try {
     const result = await scraper.scrape(credentials);
     console.log(`✓ Scraping completed for bank: ${bank_type}`);
@@ -76,5 +90,8 @@ export async function scrape(bank_type, credentials, startDate) {
       }
     }
     return { success: false, error: error.message };
+  } finally {
+    // Restore original console.error
+    console.error = originalConsoleError;
   }
 }
