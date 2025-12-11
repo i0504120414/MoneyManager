@@ -1,5 +1,5 @@
-diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..6baeb2d 100644
+﻿diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
+index 1fb11a7..8f45c2d 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -16,7 +16,7 @@ index 1fb11a7..6baeb2d 100644
            ...apiHeaders
          });
 -        if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${monthData?.title || ''}`);
-+        if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${JSON.stringify(monthData)}`);
++        if (monthData?.statusCode !== 1) throw new Error(`API error: failed to fetch card transactions. Check API response statusCode and title for details.`);
          if (!isCardTransactionDetails(monthData)) {
            throw new Error('monthData is not of type CardTransactionDetails');
          }
@@ -24,7 +24,7 @@ index 1fb11a7..6baeb2d 100644
        }
        if (pendingData?.statusCode !== 1 && pendingData?.statusCode !== 96) {
 -        debug(`failed to fetch pending transactions for card ${card.last4Digits}. Message: ${pendingData?.title || ''}`);
-+        debug(`failed to fetch pending transactions for card ${card.last4Digits}. Message: ${JSON.stringify(pendingData)}`);
++        debug(`API warning: failed to fetch pending transactions. Check API response statusCode and title for details.`);
          pendingData = null;
        } else if (!isCardPendingTransactionDetails(pendingData)) {
          debug('pendingData is not of type CardTransactionDetails');

@@ -1,4 +1,4 @@
-diff --git a/node_modules/ky/distribution/core/Ky.js b/node_modules/ky/distribution/core/Ky.js
+﻿diff --git a/node_modules/ky/distribution/core/Ky.js b/node_modules/ky/distribution/core/Ky.js
 index f67b53a..0394ce1 100644
 --- a/node_modules/ky/distribution/core/Ky.js
 +++ b/node_modules/ky/distribution/core/Ky.js

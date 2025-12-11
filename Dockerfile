@@ -11,9 +11,6 @@ RUN curl -sL https://netfree.link/dl/unix-ca.sh -o /tmp/install-ca.sh && \
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV NODE_ENV=production
-ENV NODE_EXTRA_CA_CERTS=/etc/ca-bundle.crt
-ENV REQUESTS_CA_BUNDLE=/etc/ca-bundle.crt
-ENV SSL_CERT_FILE=/etc/ca-bundle.crt
 
 WORKDIR /app
 
@@ -33,9 +30,6 @@ FROM node:20-slim AS runner
 ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV NODE_EXTRA_CA_CERTS=/etc/ca-bundle.crt
-ENV REQUESTS_CA_BUNDLE=/etc/ca-bundle.crt
-ENV SSL_CERT_FILE=/etc/ca-bundle.crt
 
 # Install chromium and dependencies for headless mode
 RUN apt-get update && \
