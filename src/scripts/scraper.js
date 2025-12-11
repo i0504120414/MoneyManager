@@ -74,6 +74,7 @@ export async function scrape(bank_type, credentials, startDate) {
       console.error(`  Error Message: ${result.errorMessage}`);
     }
     
+    console.log('✓✓✓ About to return result from scraper.js');
     return result;
   } catch (error) {
     console.error(`✗ Scraping failed with exception: ${error.message}`);
@@ -89,9 +90,11 @@ export async function scrape(bank_type, credentials, startDate) {
         // Ignore
       }
     }
+    console.error('✗✗✗ Returning error result from scraper.js');
     return { success: false, error: error.message };
   } finally {
     // Restore original console.error
+    console.log('✓✓✓ Finally block executing in scraper.js');
     console.error = originalConsoleError;
   }
 }
