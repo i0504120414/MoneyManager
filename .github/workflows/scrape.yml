@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: read
+  packages: read
 
 jobs:
   scrape:
@@ -19,8 +20,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t money-manager:latest .
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/i0504120414/moneymanager:latest || (echo "Image not found, building locally..." && docker build -t ghcr.io/i0504120414/moneymanager:latest .)
 
       - name: Run scraper with Visa Cal
         if: always()
@@ -42,7 +50,7 @@ jobs:
             -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e MONTHS_BACK=1 \
-            money-manager:latest \
+            ghcr.io/i0504120414/moneymanager:latest \
             src/scripts/testConnection.js
 
       - name: Run scraper with other banks
@@ -65,7 +73,7 @@ jobs:
             -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e MONTHS_BACK=1 \
-            money-manager:latest \
+            ghcr.io/i0504120414/moneymanager:latest \
             src/scripts/testConnection.js
 
       - name: Upload summary
