@@ -34,7 +34,7 @@ export async function scrape(bank_type, credentials, startDate) {
     args: ["--disable-dev-shm-usage", "--no-sandbox"],
     // Desktop viewport size to avoid mobile detection
     viewportSize: { width: 1920, height: 1080 },
-    navigationRetryCount: 3,
+    navigationRetryCount: 20,
     verbose: true,
     // Store screenshot if scraping fails
     storeFailureScreenShotPath: screenshotPath
