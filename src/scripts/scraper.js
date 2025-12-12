@@ -1,6 +1,11 @@
 import { createScraper } from 'israeli-bank-scrapers';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createLogger } from '../utils/logger.js';
+import { initDomainTracking } from '../security/domains.js';
+import { setupCloudflareBypass } from '../scrapers/cloudflareSolver.js';
+
+const logger = createLogger('scraper');
 
 // Create screenshots directory if it doesn't exist
 async function ensureScreenshotsDir() {
@@ -9,7 +14,7 @@ async function ensureScreenshotsDir() {
     await fs.mkdir(screenshotsDir, { recursive: true });
     return screenshotsDir;
   } catch (error) {
-    console.error('Failed to create screenshots directory:', error.message);
+    logger('Failed to create screenshots directory:', error.message);
   }
   return null;
 }
@@ -22,7 +27,7 @@ async function ensureScreenshotsDir() {
 export async function scrape(bank_type, credentials, startDate) {
   
   // Log scraping start
-  console.log(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
+  logger(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
 
   // Prepare screenshot directory
   const screenshotsDir = await ensureScreenshotsDir();
@@ -37,30 +42,33 @@ export async function scrape(bank_type, credentials, startDate) {
     navigationRetryCount: 20,
     verbose: true,
     // Store screenshot if scraping fails
-    storeFailureScreenShotPath: screenshotPath
-    
+    storeFailureScreenShotPath: screenshotPath,
+    // Callback for domain tracking and Cloudflare bypass
+    onBrowserContextCreated: async (browserContext) => {
+      logger(`[${bank_type}] Browser context created - initializing security layers...`);
+      try {
+        // Initialize request monitoring
+        await initDomainTracking(browserContext, bank_type);
+        logger(`[${bank_type}] Domain tracking initialized`);
+        
+        // Setup Cloudflare bypass for all pages in context
+        browserContext.on('page', (page) => {
+          setupCloudflareBypass(page);
+        });
+        logger(`[${bank_type}] Cloudflare bypass ready`);
+      } catch (error) {
+        logger(`[${bank_type}] Error initializing security: ${error.message}`);
+      }
+    }
   };
 
   const scraper = createScraper(scraperOptions);
 
-  // Suppress cleanup errors that happen after successful scraping
-  const originalConsoleError = console.error;
-  let cleanupError = null;
-  console.error = function(...args) {
-    const message = (args[0] || '').toString();
-    if (message.includes('Cleanup function failed') || 
-        message.includes('No target with given id found') ||
-        message.includes('Target.closeTarget')) {
-      cleanupError = message;
-      return; // Silently ignore cleanup errors
-    }
-    originalConsoleError.apply(console, args);
-  };
-
   try {
+    logger(`[${bank_type}] Starting scraper...`);
     const result = await scraper.scrape(credentials);
-    console.log(`✓ Scraping completed for bank: ${bank_type}`);
-    console.log('Scrape result:', {
+    logger(`✓ Scraping completed for bank: ${bank_type}`);
+    logger('Scrape result:', {
       success: result.success,
       accountCount: result.accounts?.length || 0,
       errorType: result.errorType,
@@ -69,32 +77,26 @@ export async function scrape(bank_type, credentials, startDate) {
     
     // If scraper returned failure, log details
     if (!result.success) {
-      console.error(`[ERROR] Scraper reported failure:`);
-      console.error(`  Error Type: ${result.errorType}`);
-      console.error(`  Error Message: ${result.errorMessage}`);
+      logger(`[ERROR] Scraper reported failure:`);
+      logger(`  Error Type: ${result.errorType}`);
+      logger(`  Error Message: ${result.errorMessage}`);
     }
     
-    console.log('✓✓✓ About to return result from scraper.js');
     return result;
   } catch (error) {
-    console.error(`✗ Scraping failed with exception: ${error.message}`);
-    console.error(`Stack: ${error.stack}`);
+    logger(`✗ Scraping failed with exception: ${error.message}`);
+    logger(`Stack: ${error.stack}`);
     // Check if screenshot was saved
     if (screenshotPath) {
       try {
         const exists = await fs.access(screenshotPath).then(() => true).catch(() => false);
         if (exists) {
-          console.log(`📸 Screenshot saved at: ${screenshotPath}`);
+          logger(`📸 Screenshot saved at: ${screenshotPath}`);
         }
       } catch (e) {
         // Ignore
       }
     }
-    console.error('✗✗✗ Returning error result from scraper.js');
     return { success: false, error: error.message };
-  } finally {
-    // Restore original console.error
-    console.log('✓✓✓ Finally block executing in scraper.js');
-    console.error = originalConsoleError;
   }
 }
