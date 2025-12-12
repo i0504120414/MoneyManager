@@ -20,7 +20,7 @@ async function ensureScreenshotsDir() {
 }
 
 // Retry scraping with exponential backoff
-// Handles transient API errors (rate limiting, temporary failures)
+// Handles transient API errors (rate limiting, temporary failures, navigation errors)
 async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3) {
   let lastError = null;
   
@@ -29,12 +29,21 @@ async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3
       logger(`[Attempt ${attempt}/${maxRetries}] Starting scrape for ${bank_type}`);
       const result = await scrapeOnce(bank_type, credentials, startDate);
       
-      // Check if result is a known failure (invalid JSON response)
-      if (result.errorMessage && result.errorMessage.includes('invalid json response body')) {
-        lastError = result;
-        if (attempt < maxRetries) {
-          const delayMs = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-          logger(`[Retry] Invalid API response detected, waiting ${delayMs}ms before retry...`);
+      // Check if result is a known failure (API or navigation issues)
+      if (result.errorMessage) {
+        const errorMsg = result.errorMessage.toLowerCase();
+        // Transient errors that should trigger retry
+        const isTransient = 
+          errorMsg.includes('invalid json response body') ||  // API rate limiting
+          errorMsg.includes('status code: 400') ||             // Navigation error (can be transient)
+          errorMsg.includes('status code: 429') ||             // Too many requests
+          errorMsg.includes('status code: 503');               // Service unavailable
+        
+        if (isTransient && attempt < maxRetries) {
+          lastError = result;
+          // Longer delay for transient issues: 5s, 10s, 15s
+          const delayMs = Math.pow(2, attempt) * 5000;
+          logger(`[Retry] Transient error detected (${result.errorType}), waiting ${delayMs}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delayMs));
           continue;
         }
@@ -44,7 +53,8 @@ async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries) {
-        const delayMs = Math.pow(2, attempt) * 2000;
+        // Longer delay for exceptions: 5s, 10s, 15s
+        const delayMs = Math.pow(2, attempt) * 5000;
         logger(`[Retry] Scrape attempt ${attempt} failed: ${error.message}, waiting ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
