@@ -44,7 +44,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries) {
-        const delayMs = Math.pow(2, attempt) * 1000;
+        const delayMs = Math.pow(2, attempt) * 2000;
         logger(`[Retry] Scrape attempt ${attempt} failed: ${error.message}, waiting ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
