@@ -33,7 +33,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3
       if (result.errorMessage && result.errorMessage.includes('invalid json response body')) {
         lastError = result;
         if (attempt < maxRetries) {
-          const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          const delayMs = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
           logger(`[Retry] Invalid API response detected, waiting ${delayMs}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delayMs));
           continue;
