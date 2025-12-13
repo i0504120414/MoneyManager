@@ -4,7 +4,7 @@
   "description": "Israeli bank account scraper and transaction manager",
   "type": "module",
   "scripts": {
-    "test:connection": "node src/scripts/testBankConnection.js",
+    "test:connection": "node src/scripts/testConnection.js",
     "scrape": "node src/scripts/scrapeTransactions.js",
     "postinstall": "patch-package"
   },
