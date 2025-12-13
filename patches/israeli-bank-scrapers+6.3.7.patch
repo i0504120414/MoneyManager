@@ -1,3 +1,21 @@
+diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+index 90a31a1..2dbf438 100644
+--- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
++++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+@@ -42,6 +42,13 @@ async function fetchPost(url, data, extraHeaders = {}) {
+     body: JSON.stringify(data)
+   };
+   const result = await (0, _nodeFetch.default)(url, request);
++  
++  // Ignore HTTP 400 errors from asset requests (CDN), but still parse and return
++  // Only API endpoints should trigger actual errors
++  if (result.status === 400 && url.includes('/assets/')) {
++    return { statusCode: 0, success: false, message: 'Ignored asset loading error' };
++  }
++  
+   return result.json();
+ }
+ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 index 1fb11a7..11da262 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
