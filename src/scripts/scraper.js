@@ -19,100 +19,127 @@ async function ensureScreenshotsDir() {
   return null;
 }
 
-// Retry scraping with exponential backoff
-// Handles transient API errors (rate limiting, temporary failures, navigation errors)
+// KEY FIX: Reuse same browser instance across retries to preserve session state, cookies, and auth headers
+// This prevents HTTP 400 errors that occur when creating new browser instances with lost session
 async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3) {
   let lastError = null;
+  let scraper = null;
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      logger(`[Attempt ${attempt}/${maxRetries}] Starting scrape for ${bank_type}`);
-      const result = await scrapeOnce(bank_type, credentials, startDate);
-      
-      // Check if result is a known failure (API or navigation issues)
-      if (result.errorMessage) {
-        const errorMsg = result.errorMessage.toLowerCase();
-        // Transient errors that should trigger retry
-        const isTransient = 
-          errorMsg.includes('invalid json response body') ||  // API rate limiting
-          errorMsg.includes('status code: 400') ||             // Navigation error (can be transient)
-          errorMsg.includes('status code: 429') ||             // Too many requests
-          errorMsg.includes('status code: 503');               // Service unavailable
-        
-        if (isTransient && attempt < maxRetries) {
-          lastError = result;
-          // Longer delay for transient issues: 5s, 10s, 15s
-          const delayMs = Math.pow(2, attempt) * 5000;
-          logger(`[Retry] Transient error detected (${result.errorType}), waiting ${delayMs}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          continue;
+  try {
+    // Create scraper ONCE - will reuse for all retry attempts
+    logger(`[Setup] Creating scraper instance for ${bank_type}...`);
+    scraper = createScraper({
+      companyId: bank_type,
+      startDate: startDate,
+      args: ["--disable-dev-shm-usage", "--no-sandbox"],
+      viewportSize: { width: 1920, height: 1080 },
+      navigationRetryCount: 20,
+      verbose: true,
+      onBrowserContextCreated: async (browserContext) => {
+        logger(`[${bank_type}] Browser context created`);
+        try {
+          await initDomainTracking(browserContext, bank_type);
+          browserContext.on('page', (page) => {
+            setupCloudflareBypass(page);
+          });
+        } catch (error) {
+          logger(`[${bank_type}] Security setup error: ${error.message}`);
         }
       }
-      
-      return result;
-    } catch (error) {
-      lastError = error;
-      if (attempt < maxRetries) {
-        // Longer delay for exceptions: 5s, 10s, 15s
-        const delayMs = Math.pow(2, attempt) * 5000;
-        logger(`[Retry] Scrape attempt ${attempt} failed: ${error.message}, waiting ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+    });
+    
+    // Retry scraping with SAME browser instance (preserves cookies/session)
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger(`[Attempt ${attempt}/${maxRetries}] Scraping ${bank_type} with same browser context...`);
+        const result = await scraper.scrape(credentials);
+        
+        if (result.success) {
+          logger(`✓ [Attempt ${attempt}] Scrape succeeded`);
+          return result;
+        }
+        
+        // Check if error is transient
+        if (result.errorMessage) {
+          const errorMsg = result.errorMessage.toLowerCase();
+          const isTransient = 
+            errorMsg.includes('invalid json response body') ||
+            errorMsg.includes('status code: 400') ||
+            errorMsg.includes('status code: 429') ||
+            errorMsg.includes('status code: 503');
+          
+          if (isTransient && attempt < maxRetries) {
+            lastError = result;
+            const delayMs = Math.pow(2, attempt) * 5000;
+            logger(`[Retry] Transient error (${result.errorType}), waiting ${delayMs}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            continue;
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries) {
+          const delayMs = Math.pow(2, attempt) * 5000;
+          logger(`[Retry] Attempt ${attempt} error: ${error.message}, waiting ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    
+    // All retries exhausted
+    logger(`[ERROR] All ${maxRetries} attempts failed`);
+    if (lastError && lastError.errorMessage) {
+      return lastError;
+    }
+    return {
+      success: false,
+      accounts: [],
+      errorType: 'RETRY_EXHAUSTED',
+      errorMessage: `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown'}`
+    };
+    
+  } finally {
+    // Cleanup browser
+    if (scraper && scraper.browser) {
+      try {
+        logger('[Cleanup] Closing browser...');
+        await scraper.browser.close();
+      } catch (error) {
+        logger(`[Cleanup] Error: ${error.message}`);
       }
     }
   }
-  
-  // All retries exhausted
-  logger(`[ERROR] All ${maxRetries} retry attempts failed`);
-  if (lastError && lastError.errorMessage) {
-    return lastError; // Return the scraperResult object
-  }
-  return {
-    success: false,
-    accounts: [],
-    errorType: 'RETRY_EXHAUSTED',
-    errorMessage: `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`
-  };
 }
 
-// Single scrape attempt
+// Single scrape attempt (backward compatible)
 async function scrapeOnce(bank_type, credentials, startDate) {
-  // Log scraping start
   logger(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
 
-  // Prepare screenshot directory
   const screenshotsDir = await ensureScreenshotsDir();
   const screenshotPath = screenshotsDir ? path.join(screenshotsDir, `${bank_type}_failure.png`) : undefined;
 
-  const scraperOptions = {
+  const scraper = createScraper({
     companyId: bank_type,
     startDate: startDate,
     args: ["--disable-dev-shm-usage", "--no-sandbox"],
-    // Desktop viewport size to avoid mobile detection
     viewportSize: { width: 1920, height: 1080 },
     navigationRetryCount: 20,
     verbose: true,
-    // Store screenshot if scraping fails
     storeFailureScreenShotPath: screenshotPath,
-    // Callback for domain tracking and Cloudflare bypass
     onBrowserContextCreated: async (browserContext) => {
-      logger(`[${bank_type}] Browser context created - initializing security layers...`);
+      logger(`[${bank_type}] Browser context created`);
       try {
-        // Initialize request monitoring
         await initDomainTracking(browserContext, bank_type);
-        logger(`[${bank_type}] Domain tracking initialized`);
-        
-        // Setup Cloudflare bypass for all pages in context
         browserContext.on('page', (page) => {
           setupCloudflareBypass(page);
         });
-        logger(`[${bank_type}] Cloudflare bypass ready`);
       } catch (error) {
-        logger(`[${bank_type}] Error initializing security: ${error.message}`);
+        logger(`[${bank_type}] Security setup error: ${error.message}`);
       }
     }
-  };
-
-  const scraper = createScraper(scraperOptions);
+  });
 
   try {
     logger(`[${bank_type}] Starting scraper...`);
@@ -125,7 +152,6 @@ async function scrapeOnce(bank_type, credentials, startDate) {
       errorMessage: result.errorMessage
     });
     
-    // If scraper returned failure, log details
     if (!result.success) {
       logger(`[ERROR] Scraper reported failure:`);
       logger(`  Error Type: ${result.errorType}`);
@@ -136,22 +162,11 @@ async function scrapeOnce(bank_type, credentials, startDate) {
   } catch (error) {
     logger(`✗ Scraping failed with exception: ${error.message}`);
     logger(`Stack: ${error.stack}`);
-    // Check if screenshot was saved
-    if (screenshotPath) {
-      try {
-        const exists = await fs.access(screenshotPath).then(() => true).catch(() => false);
-        if (exists) {
-          logger(`📸 Screenshot saved at: ${screenshotPath}`);
-        }
-      } catch (e) {
-        // Ignore
-      }
-    }
     return { success: false, error: error.message };
   }
 }
 
-// Exported function - uses retry logic
+// Exported function - uses retry logic with REUSED browser context
 // @param {string} bank_type - Bank type
 // @param {Record<string, string>} credentials - Bank login credentials
 // @param {Date} startDate - Start date for transactions
