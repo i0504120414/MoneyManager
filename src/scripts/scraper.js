@@ -19,105 +19,57 @@ async function ensureScreenshotsDir() {
   return null;
 }
 
-// KEY FIX: Create FRESH scraper instance for each retry attempt
-// The israeli-bank-scrapers library internally manages browser lifecycle
-// Reusing the same instance doesn't work because scraper.scrape() closes the browser
-// Solution: Create new scraper per attempt, let each manage its own browser
-async function scrapeWithRetry(bank_type, credentials, startDate, maxRetries = 3) {
-  let lastError = null;
+// Simple single-attempt scxxxxxxunction
+// Retry logic has been moved to the visa-cal.ts patch to distinguish between
+// API errors (worthy of retry) vs asset/CDN errors (should be ignored)
+async function scrapeWithRetry(bank_type, credentials, startDate) {
+  let scraper = null;
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    let scraper = null;
+  try {
+    logger(`Creating scraper instance for ${bank_type}...`);
     
-    try {
-      logger(`[Attempt ${attempt}/${maxRetries}] Creating fresh scraper instance for ${bank_type}...`);
-      
-      // Create FRESH scraper instance for this attempt
-      scraper = createScraper({
-        companyId: bank_type,
-        startDate: startDate,
-        args: ["--disable-dev-shm-usage", "--no-sandbox"],
-        viewportSize: { width: 1920, height: 1080 },
-        navigationRetryCount: 20,
-        verbose: true,
-        onBrowserContextCreated: async (browserContext) => {
-          logger(`[${bank_type}] Browser context created`);
-          try {
-            await initDomainTracking(browserContext, bank_type);
-            browserContext.on('page', (page) => {
-              setupCloudflareBypass(page);
-            });
-          } catch (error) {
-            logger(`[${bank_type}] Security setup error: ${error.message}`);
-          }
-        }
-      });
-      
-      logger(`[Attempt ${attempt}] Starting scrape with fresh browser...`);
-      const result = await scraper.scrape(credentials);
-      
-      if (result.success) {
-        logger(` [Attempt ${attempt}] Scrape succeeded`);
-        return result;
-      }
-      
-      // Check if error is transient
-      if (result.errorMessage) {
-        const errorMsg = result.errorMessage.toLowerCase();
-        const isTransient = 
-          errorMsg.includes('invalid json response body') ||
-          errorMsg.includes('status code: 400') ||
-          errorMsg.includes('status code: 429') ||
-          errorMsg.includes('status code: 503') ||
-          errorMsg.includes('waiting for selector');
-        
-        lastError = result;
-        
-        if (isTransient && attempt < maxRetries) {
-          const delayMs = Math.pow(2, attempt) * 5000;
-          logger(`[Retry] Transient error (${result.errorType}), waiting ${delayMs}ms before attempt ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          continue; // Go to next iteration = fresh scraper instance
-        }
-      }
-      
-      // Non-transient error or last attempt
-      logger(`[Attempt ${attempt}] Non-transient error, returning result`);
-      return result;
-      
-    } catch (error) {
-      logger(`[Attempt ${attempt}] Exception: ${error.message}`);
-      lastError = error;
-      
-      if (attempt < maxRetries) {
-        const delayMs = Math.pow(2, attempt) * 5000;
-        logger(`[Retry] Exception on attempt ${attempt}, waiting ${delayMs}ms before attempt ${attempt + 1}...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    } finally {
-      // Cleanup browser for THIS attempt
-      if (scraper && scraper.browser) {
+    scraper = createScraper({
+      companyId: bank_type,
+      startDate: startDate,
+      args: ["--disable-dev-shm-usage", "--no-sandbox"],
+      viewportSize: { width: 1920, height: 1080 },
+      navigationRetryCount: 20,
+      verbose: true,
+      onBrowserContextCreated: async (browserContext) => {
+        logger(`[${bank_type}] Browser context created`);
         try {
-          logger(`[Attempt ${attempt}] Closing browser...`);
-          await scraper.browser.close();
+          await initDomainTracking(browserContext, bank_type);
+          browserContext.on('page', (page) => {
+            setupCloudflareBypass(page);
+          });
         } catch (error) {
-          logger(`[Attempt ${attempt}] Cleanup error: ${error.message}`);
+          logger(`[${bank_type}] Security setup error: ${error.message}`);
         }
+      }
+    });
+    
+    logger(`Starting scrape...`);
+    const result = await scraper.scrape(credentials);
+    return result;
+    
+  } catch (error) {
+    logger(`Scrape exception: ${error.message}`);
+    return {
+      success: false,
+      accounts: [],
+      errorType: 'SCRAPER_ERROR',
+      errorMessage: error.message
+    };
+  } finally {
+    if (scraper?.browser) {
+      try {
+        logger(`Closing browser...`);
+        await scraper.browser.close();
+      } catch (error) {
+        logger(`Browser cleanup error: ${error.message}`);
       }
     }
   }
-  
-  // All retries exhausted
-  logger(`[ERROR] All ${maxRetries} attempts failed`);
-  if (lastError && lastError.errorMessage) {
-    return lastError;
-  }
-  return {
-    success: false,
-    accounts: [],
-    errorType: 'RETRY_EXHAUSTED',
-    errorMessage: `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown'}`
-  };
 }
 
 // Single scrape attempt (backward compatible)
@@ -173,11 +125,12 @@ async function scrapeOnce(bank_type, credentials, startDate) {
   }
 }
 
-// Exported function - uses retry logic with FRESH browser per attempt
+// Exported function - now uses simple single-attempt scrape
+// Retry logic has been moved to the visa-cal.ts patch to handle API vs asset errors properly
 // @param {string} bank_type - Bank type
 // @param {Record<string, string>} credentials - Bank login credentials
 // @param {Date} startDate - Start date for transactions
 // @returns {Promise<Object>} - Scrape result
 export async function scrape(bank_type, credentials, startDate) {
-  return scrapeWithRetry(bank_type, credentials, startDate, 3);
+  return scrapeWithRetry(bank_type, credentials, startDate);
 }
