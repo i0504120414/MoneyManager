@@ -1,0 +1,149 @@
+diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+index 90a31a1..a1c82cf 100644
+--- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
++++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+@@ -30,7 +30,12 @@ async function fetchGet(url, extraHeaders) {
+   if (fetchResult.status !== 200) {
+     throw new Error(`sending a request to the institute server returned with status code ${fetchResult.status}`);
+   }
+-  return fetchResult.json();
++  try {
++    return await fetchResult.json();
++  } catch (error) {
++    console.error('[FETCH] Failed to parse JSON from ' + url + '. Status: ' + fetchResult.status);
++    throw new Error('Invalid JSON response from server');
++  }
+ }
+ async function fetchPost(url, data, extraHeaders = {}) {
+   const request = {
+@@ -42,7 +47,12 @@ async function fetchPost(url, data, extraHeaders = {}) {
+     body: JSON.stringify(data)
+   };
+   const result = await (0, _nodeFetch.default)(url, request);
+-  return result.json();
++  try {
++    return await result.json();
++  } catch (error) {
++    console.error('[FETCH] Failed to parse JSON from ' + url + '. Status: ' + result.status);
++    return { statusCode: 0, success: false, message: 'Invalid JSON response from server' };
++  }
+ }
+ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+   const result = await fetchPost(url, {
+diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/base-scraper-with-browser.js b/node_modules/israeli-bank-scrapers/lib/scrapers/base-scraper-with-browser.js
+index 6ed10ef..182fc93 100644
+--- a/node_modules/israeli-bank-scrapers/lib/scrapers/base-scraper-with-browser.js
++++ b/node_modules/israeli-bank-scrapers/lib/scrapers/base-scraper-with-browser.js
+@@ -164,9 +164,12 @@ class BaseScraperWithBrowser extends _baseScraper.BaseScraper {
+     debug('create a new browser page');
+     return browser.newPage();
+   }
+-  async navigateTo(url, waitUntil = 'load', retries = this.options.navigationRetryCount ?? 0) {
++  async navigateTo(url, waitUntil, retries = this.options.navigationRetryCount ?? 0) {
++    const actualWaitUntil = waitUntil || 'load';
++    debug(`navigateTo: ${url} with waitUntil: ${actualWaitUntil}`);
+     const response = await this.page?.goto(url, {
+-      waitUntil
++      waitUntil: actualWaitUntil,
++      timeout: 120000
+     });
+     if (response === null) {
+       // note: response will be null when navigating to same url while changing the hash part.
+@@ -258,8 +261,22 @@ class BaseScraperWithBrowser extends _baseScraper.BaseScraper {
+         fullPage: true
+       });
+     }
+-    await Promise.all(this.cleanups.reverse().map(safeCleanup));
+-    this.cleanups = [];
++    for (const [i, cleanup] of this.cleanups.reverse().entries()) {
++  try {
++    debug(`[TERMINATE] Running cleanup #${i}`);
++    await cleanup();
++    debug(`[TERMINATE] Cleanup #${i} finished successfully`);
++  } catch (err) {
++    debug(`[TERMINATE] Cleanup #${i} failed:`, err);
++    const errorObj = err as Error;
++    if (errorObj && errorObj.message && errorObj.message.includes('No target with given id found')) {
++      debug(`[TERMINATE] Suppressing Puppeteer closeTarget error for cleanup #${i}`);
++    } else {
++      throw err;
++    }
++  }
++}
++this.cleanups = [];
+   }
+   handleLoginResult(loginResult) {
+     switch (loginResult) {
+diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
+index 1fb11a7..e2b85cb 100644
+--- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
++++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
+@@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
+ var _baseScraperWithBrowser = require("./base-scraper-with-browser");
+ function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
+ const apiHeaders = {
+-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
++  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+   Origin: 'https://www.cal-online.co.il',
+   Referer: 'https://www.cal-online.co.il/',
+   'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+@@ -58,7 +58,7 @@ async function getLoginFrame(page) {
+   await (0, _waiting.waitUntil)(() => {
+     frame = page.frames().find(f => f.url().includes('connect')) || null;
+     return Promise.resolve(!!frame);
+-  }, 'wait for iframe with login form', 10000, 1000);
++    }, 'wait for iframe with login form', 120000, 1000);
+   if (!frame) {
+     debug('failed to find login frame for 10 seconds');
+     throw new Error('failed to extract login iframe');
+@@ -164,7 +164,8 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+     return frame;
+   };
+   async getCards() {
+-    const initData = await (0, _waiting.waitUntil)(() => (0, _storage.getFromSessionStorage)(this.page, 'init'), 'get init data in session storage', 10000, 1000);
++    debug('getting cards - waiting for init data in session storage');
++    const initData = await (0, _waiting.waitUntil)(() => (0, _storage.getFromSessionStorage)(this.page, 'init'), 'get init data in session storage', 120000, 1000);
+     if (!initData) {
+       throw new Error("could not find 'init' data in session storage");
+     }
+@@ -179,7 +180,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+   async getAuthorizationHeader() {
+     if (!this.authorization) {
+       debug('fetching authorization header');
+-      const authModule = await (0, _waiting.waitUntil)(async () => authModuleOrUndefined(await (0, _storage.getFromSessionStorage)(this.page, 'auth-module')), 'get authorization header with valid token in session storage', 10_000, 50);
++      const authModule = await (0, _waiting.waitUntil)(async () => authModuleOrUndefined(await (0, _storage.getFromSessionStorage)(this.page, 'auth-module')), 'get authorization header with valid token in session storage', 120_000, 50);
+       return `CALAuthScheme ${authModule.auth.calConnectToken}`;
+     }
+     return this.authorization;
+@@ -201,7 +202,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+   }
+   getLoginOptions(credentials) {
+     this.authRequestPromise = this.page.waitForRequest(SSO_AUTHORIZATION_REQUEST_ENDPOINT, {
+-      timeout: 10_000
++      timeout: 120_000
+     }).catch(e => {
+       debug('error while waiting for the token request', e);
+       return undefined;
+@@ -215,7 +216,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       preAction: this.openLoginPopup,
+       postAction: async () => {
+         try {
+-          await (0, _navigation.waitForNavigation)(this.page);
++          debug('postAction: running');
++          // Note: removed waitForNavigation to avoid timeout issues
++          // await (0, _navigation.waitForNavigation)(this.page, { timeout: 120000 });
+           const currentUrl = await (0, _navigation.getCurrentUrl)(this.page);
+           if (currentUrl.endsWith('site-tutorial')) {
+             await (0, _elementsInteractions.clickButton)(this.page, 'button.btn-close');
+@@ -223,8 +226,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+           const request = await this.authRequestPromise;
+           this.authorization = String(request?.headers().authorization || '').trim();
+         } catch (e) {
+-          const currentUrl = await (0, _navigation.getCurrentUrl)(this.page);
+-          if (currentUrl.endsWith('dashboard')) return;
++          const errorUrl = await (0, _navigation.getCurrentUrl)(this.page);
++          debug('postAction error caught, current URL: ' + errorUrl + ', error: ' + e.message);
++          if (errorUrl.endsWith('dashboard')) return;
+           const requiresChangePassword = await hasChangePasswordForm(this.page);
+           if (requiresChangePassword) return;
+           throw e;
