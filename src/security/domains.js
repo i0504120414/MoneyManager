@@ -56,8 +56,13 @@ export async function initDomainTracking(browserContext, companyId) {
       logHTTPRequest(url, 'GET', status, null);
       
       if (status >= 400) {
-        logger(`HTTP ${status} from ${url}`);
-        logToMetadataFile('HTTP error', { url, status, companyId });
+        // Ignore 400 errors from assets CDN
+        if (status === 400 && url.includes('/assets/')) {
+          logger(`Ignoring HTTP ${status} from assets CDN: ${url}`);
+        } else {
+          logger(`HTTP ${status} from ${url}`);
+          logToMetadataFile('HTTP error', { url, status, companyId });
+        }
       }
     });
   });

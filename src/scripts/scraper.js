@@ -31,6 +31,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
     scraper = createScraper({
       companyId: bank_type,
       startDate: startDate,
+      defaultTimeout: 120000,
       args: ["--disable-dev-shm-usage", "--no-sandbox"],
       viewportSize: { width: 1920, height: 1080 },
       navigationRetryCount: 20,
