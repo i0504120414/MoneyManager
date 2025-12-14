@@ -9,7 +9,7 @@ const logger = createLogger('scraper');
 
 // Create screenshots directory if it doesn't exist
 async function ensureScreenshotsDir() {
-  const screenshotsDir = path.join(process.cwd(), 'screenshots');
+  const screenshotsDir = path.join(process.cwd(), 'app', 'screenshots');
   try {
     await fs.mkdir(screenshotsDir, { recursive: true });
     return screenshotsDir;
