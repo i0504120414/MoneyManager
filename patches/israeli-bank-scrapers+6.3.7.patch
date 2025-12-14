@@ -75,7 +75,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..82d8c86 100644
+index 1fb11a7..462ce26 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -191,7 +191,7 @@ index 1fb11a7..82d8c86 100644
      }).catch(e => {
        debug('error while waiting for the token request', e);
        return undefined;
-@@ -215,16 +239,41 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -215,16 +239,57 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        preAction: this.openLoginPopup,
        postAction: async () => {
          try {
@@ -210,9 +210,25 @@ index 1fb11a7..82d8c86 100644
            if (currentUrl.endsWith('site-tutorial')) {
              await (0, _elementsInteractions.clickButton)(this.page, 'button.btn-close');
            }
++          
++          // Try to get authorization token from request headers
            const request = await this.authRequestPromise;
            this.authorization = String(request?.headers().authorization || '').trim();
-+          debug('postAction: authorization token = ' + (this.authorization ? 'RECEIVED' : 'NOT_RECEIVED'));
++          debug('postAction: authorization token from request = ' + (this.authorization ? 'RECEIVED' : 'NOT_RECEIVED'));
++          
++          // If not received from request, try to get from session storage
++          if (!this.authorization) {
++            debug('postAction: token not from request, trying sessionStorage...');
++            try {
++              const authModule = await (0, _storage.getFromSessionStorage)(this.page, 'auth-module');
++              if (authModule?.auth?.calConnectToken) {
++                this.authorization = `CALAuthScheme ${authModule.auth.calConnectToken}`;
++                debug('postAction: authorization token from sessionStorage = RECEIVED');
++              }
++            } catch (e) {
++              debug('postAction: failed to get token from sessionStorage: ' + e.message);
++            }
++          }
 +          
 +          // Wait for dashboard URL to appear
 +          try {
