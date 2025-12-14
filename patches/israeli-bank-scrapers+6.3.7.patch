@@ -82,7 +82,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..fcd7670 100644
+index 1fb11a7..d6fb39e 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -272,18 +272,30 @@ index 1fb11a7..fcd7670 100644
            const requiresChangePassword = await hasChangePasswordForm(this.page);
            if (requiresChangePassword) return;
            throw e;
-@@ -241,7 +313,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -240,8 +312,20 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+     debug(`fetch transactions starting ${startMoment.format()}`);
      const [cards, xSiteId, Authorization] = await Promise.all([this.getCards(), this.getXSiteId(), this.getAuthorizationHeader()]);
      const futureMonthsToScrape = this.options.futureMonthsToScrape ?? 1;
-     const accounts = await Promise.all(cards.map(async card => {
+-    const accounts = await Promise.all(cards.map(async card => {
 -      const finalMonthToFetchMoment = (0, _moment.default)().add(futureMonthsToScrape, 'month');
++    const accounts = [];
++    
++    // Process cards sequentially with delays to avoid rate limiting
++    for (let cardIndex = 0; cardIndex < cards.length; cardIndex += 1) {
++      const card = cards[cardIndex];
++      
++      // Add delay between card processing (skip first card)
++      if (cardIndex > 0) {
++        await new Promise(resolve => setTimeout(resolve, 1500));
++      }
++      
 +      // Note: Don't add futureMonthsToScxxxxxxxxxxx final month - API doesn't have future data
 +      // Just use current month as the end point
 +      const finalMonthToFetchMoment = (0, _moment.default)().clone();
        const months = finalMonthToFetchMoment.diff(startMoment, 'months');
        const allMonthsData = [];
        debug(`fetch pending transactions for card ${card.cardUniqueId}`);
-@@ -256,17 +330,53 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -256,17 +340,61 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        debug(`fetch completed transactions for card ${card.cardUniqueId}`);
        for (let i = 0; i <= months; i += 1) {
          const month = finalMonthToFetchMoment.clone().subtract(i, 'months');
@@ -306,7 +318,7 @@ index 1fb11a7..fcd7670 100644
 +          try {
 +            // Add small delay between requests to avoid rate limiting
 +            if (i > 0) {
-+              await new Promise(resolve => setTimeout(resolve, 500));
++              await new Promise(resolve => setTimeout(resolve, 800));
 +            }
 +            
 +            monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
@@ -328,18 +340,26 @@ index 1fb11a7..fcd7670 100644
 +              lastError = `Server error (${monthData.statusCode}), retrying...`;
 +              retries--;
 +              if (retries > 0) {
-+                await new Promise(resolve => setTimeout(resolve, 1000));
++                await new Promise(resolve => setTimeout(resolve, 1500));
++              }
++              continue;
++            } else if (monthData?.statusCode === 400) {
++              // 400 errors might be rate limiting in Docker, retry with longer delay
++              lastError = `Client error (${monthData.statusCode}), retrying with longer delay...`;
++              retries--;
++              if (retries > 0) {
++                await new Promise(resolve => setTimeout(resolve, 2500));
 +              }
 +              continue;
 +            } else {
-+              // Client error (400, etc), don't retry
++              // Other client errors, don't retry
 +              break;
 +            }
 +          } catch (e) {
 +            lastError = e.message;
 +            retries--;
 +            if (retries > 0) {
-+              await new Promise(resolve => setTimeout(resolve, 1000));
++              await new Promise(resolve => setTimeout(resolve, 1500));
 +            }
 +          }
 +        }
@@ -348,3 +368,18 @@ index 1fb11a7..fcd7670 100644
          if (!isCardTransactionDetails(monthData)) {
            throw new Error('monthData is not of type CardTransactionDetails');
          }
+@@ -282,11 +410,11 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       const transactions = convertParsedDataToTransactions(allMonthsData, pendingData);
+       debug('filter out old transactions');
+       const txns = this.options.outputData?.enableTransactionsFilterByDate ?? true ? (0, _transactions.filterOldTransactions)(transactions, (0, _moment.default)(startDate), this.options.combineInstallments || false) : transactions;
+-      return {
++      accounts.push({
+         txns,
+         accountNumber: card.last4Digits
+-      };
+-    }));
++      });
++    }
+     debug('return the scraped accounts');
+     debug(JSON.stringify(accounts, null, 2));
+     return {
