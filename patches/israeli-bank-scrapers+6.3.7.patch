@@ -75,7 +75,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..462ce26 100644
+index 1fb11a7..dbffdfc 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -173,16 +173,29 @@ index 1fb11a7..462ce26 100644
      if (!initData) {
        throw new Error("could not find 'init' data in session storage");
      }
-@@ -179,7 +203,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -177,11 +201,18 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+     }));
+   }
    async getAuthorizationHeader() {
++    debug('getAuthorizationHeader: checking this.authorization = ' + (this.authorization ? 'SET' : 'NOT_SET'));
      if (!this.authorization) {
-       debug('fetching authorization header');
+-      debug('fetching authorization header');
 -      const authModule = await (0, _waiting.waitUntil)(async () => authModuleOrUndefined(await (0, _storage.getFromSessionStorage)(this.page, 'auth-module')), 'get authorization header with valid token in session storage', 10_000, 50);
+-      return `CALAuthScheme ${authModule.auth.calConnectToken}`;
++      debug('getAuthorizationHeader: authorization not set in postAction, fetching from sessionStorage...');
 +      const authModule = await (0, _waiting.waitUntil)(async () => authModuleOrUndefined(await (0, _storage.getFromSessionStorage)(this.page, 'auth-module')), 'get authorization header with valid token in session storage', 120_000, 50);
-       return `CALAuthScheme ${authModule.auth.calConnectToken}`;
++      if (authModule?.auth?.calConnectToken) {
++        const token = `CALAuthScheme ${authModule.auth.calConnectToken}`;
++        debug('getAuthorizationHeader: got token from sessionStorage = ' + token.substring(0, 20) + '...');
++        return token;
++      }
++      throw new Error('No valid authorization token found in sessionStorage');
      }
++    debug('getAuthorizationHeader: using authorization from postAction = ' + this.authorization.substring(0, 20) + '...');
      return this.authorization;
-@@ -201,7 +225,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+   }
+   async getXSiteId() {
+@@ -201,7 +232,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    }
    getLoginOptions(credentials) {
      this.authRequestPromise = this.page.waitForRequest(SSO_AUTHORIZATION_REQUEST_ENDPOINT, {
@@ -191,7 +204,7 @@ index 1fb11a7..462ce26 100644
      }).catch(e => {
        debug('error while waiting for the token request', e);
        return undefined;
-@@ -215,16 +239,57 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -215,16 +246,57 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        preAction: this.openLoginPopup,
        postAction: async () => {
          try {
