@@ -82,7 +82,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..42811c6 100644
+index 1fb11a7..fcd7670 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -283,3 +283,68 @@ index 1fb11a7..42811c6 100644
        const months = finalMonthToFetchMoment.diff(startMoment, 'months');
        const allMonthsData = [];
        debug(`fetch pending transactions for card ${card.cardUniqueId}`);
+@@ -256,17 +330,53 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       debug(`fetch completed transactions for card ${card.cardUniqueId}`);
+       for (let i = 0; i <= months; i += 1) {
+         const month = finalMonthToFetchMoment.clone().subtract(i, 'months');
+-        const monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
+-          cardUniqueId: card.cardUniqueId,
+-          month: month.format('M'),
+-          year: month.format('YYYY')
+-        }, {
+-          Authorization,
+-          'X-Site-Id': xSiteId,
+-          'Content-Type': 'application/json',
+-          ...apiHeaders
+-        });
+-        if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${monthData?.title || ''}`);
++        let monthData = null;
++        let retries = 3;
++        let lastError = null;
++        
++        while (retries > 0) {
++          try {
++            // Add small delay between requests to avoid rate limiting
++            if (i > 0) {
++              await new Promise(resolve => setTimeout(resolve, 500));
++            }
++            
++            monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
++              cardUniqueId: card.cardUniqueId,
++              month: month.format('M'),
++              year: month.format('YYYY')
++            }, {
++              Authorization,
++              'X-Site-Id': xSiteId,
++              'Content-Type': 'application/json',
++              ...apiHeaders
++            });
++            
++            // Check if we got a valid response
++            if (monthData?.statusCode === 1 || monthData?.result !== undefined) {
++              break; // Success, exit retry loop
++            } else if (monthData?.statusCode === 500 || monthData?.statusCode === 503) {
++              // Server error, retry after delay
++              lastError = `Server error (${monthData.statusCode}), retrying...`;
++              retries--;
++              if (retries > 0) {
++                await new Promise(resolve => setTimeout(resolve, 1000));
++              }
++              continue;
++            } else {
++              // Client error (400, etc), don't retry
++              break;
++            }
++          } catch (e) {
++            lastError = e.message;
++            retries--;
++            if (retries > 0) {
++              await new Promise(resolve => setTimeout(resolve, 1000));
++            }
++          }
++        }
++        
++        if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${monthData?.title || lastError || ''}`);
+         if (!isCardTransactionDetails(monthData)) {
+           throw new Error('monthData is not of type CardTransactionDetails');
+         }
