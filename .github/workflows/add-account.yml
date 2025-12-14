@@ -127,7 +127,7 @@ jobs:
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e DEBUG='*,-puppeteer:*' \
             ghcr.io/i0504120414/moneymanager:latest \
-            node src/scripts/testConnection.js
+            src/scripts/testConnection.js
       
       - name: Add Account to Database
         if: success()
@@ -170,7 +170,7 @@ jobs:
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e DEBUG='*,-puppeteer:*' \
             ghcr.io/i0504120414/moneymanager:latest \
-            node src/scripts/addAccount.js
+            src/scripts/addAccount.js
       
       - name: Upload error screenshots
         if: always()
