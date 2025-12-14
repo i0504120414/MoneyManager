@@ -91,8 +91,8 @@ jobs:
       - name: Test Bank Connection
         env:
           BANK_TYPE: ${{ github.event.inputs.bank_type }}
+          BANK_USERNAME: ${{ github.event.inputs.username }}
           USER_CODE: ${{ github.event.inputs.userCode }}
-          USERNAME: ${{ github.event.inputs.username }}
           ID: ${{ github.event.inputs.id }}
           PASSWORD: ${{ github.event.inputs.password }}
           NUM: ${{ github.event.inputs.num }}
@@ -110,8 +110,8 @@ jobs:
         run: |
           docker run --rm \
             -e BANK_TYPE="$BANK_TYPE" \
+            -e BANK_USERNAME="$BANK_USERNAME" \
             -e USER_CODE="$USER_CODE" \
-            -e USERNAME="$USERNAME" \
             -e ID="$ID" \
             -e PASSWORD="$PASSWORD" \
             -e NUM="$NUM" \
@@ -127,14 +127,14 @@ jobs:
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e DEBUG='*,-puppeteer:*' \
             ghcr.io/i0504120414/moneymanager:latest \
-            src/scripts/testConnection.js
+            node src/scripts/testConnection.js
       
       - name: Add Account to Database
         if: success()
         env:
           BANK_TYPE: ${{ github.event.inputs.bank_type }}
+          BANK_USERNAME: ${{ github.event.inputs.username }}
           USER_CODE: ${{ github.event.inputs.userCode }}
-          USERNAME: ${{ github.event.inputs.username }}
           ID: ${{ github.event.inputs.id }}
           PASSWORD: ${{ github.event.inputs.password }}
           NUM: ${{ github.event.inputs.num }}
@@ -153,8 +153,8 @@ jobs:
         run: |
           docker run --rm \
             -e BANK_TYPE="$BANK_TYPE" \
+            -e BANK_USERNAME="$BANK_USERNAME" \
             -e USER_CODE="$USER_CODE" \
-            -e USERNAME="$USERNAME" \
             -e ID="$ID" \
             -e PASSWORD="$PASSWORD" \
             -e NUM="$NUM" \
@@ -170,13 +170,13 @@ jobs:
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e DEBUG='*,-puppeteer:*' \
             ghcr.io/i0504120414/moneymanager:latest \
-            src/scripts/addAccount.js
+            node src/scripts/addAccount.js
       
       - name: Upload error screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: add-account-screenshots-${{ github.run_id }}
-          path: screenshots/
+          path: app/screenshots/
           retention-days: 30
           if-no-files-found: ignore
