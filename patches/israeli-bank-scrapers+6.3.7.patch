@@ -75,7 +75,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..e2b85cb 100644
+index 1fb11a7..4dbb198 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -87,16 +87,71 @@ index 1fb11a7..e2b85cb 100644
    Origin: 'https://www.cal-online.co.il',
    Referer: 'https://www.cal-online.co.il/',
    'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
-@@ -58,7 +58,7 @@ async function getLoginFrame(page) {
-   await (0, _waiting.waitUntil)(() => {
-     frame = page.frames().find(f => f.url().includes('connect')) || null;
-     return Promise.resolve(!!frame);
+@@ -55,28 +55,46 @@ function isCardPendingTransactionDetails(result) {
+ async function getLoginFrame(page) {
+   let frame = null;
+   debug('wait until login frame found');
+-  await (0, _waiting.waitUntil)(() => {
+-    frame = page.frames().find(f => f.url().includes('connect')) || null;
+-    return Promise.resolve(!!frame);
 -  }, 'wait for iframe with login form', 10000, 1000);
-+    }, 'wait for iframe with login form', 120000, 1000);
-   if (!frame) {
-     debug('failed to find login frame for 10 seconds');
-     throw new Error('failed to extract login iframe');
-@@ -164,7 +164,8 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+-  if (!frame) {
+-    debug('failed to find login frame for 10 seconds');
+-    throw new Error('failed to extract login iframe');
++  try {
++    await (0, _waiting.waitUntil)(() => {
++      frame = page.frames().find(f => f.url().includes('connect')) || null;
++      return Promise.resolve(!!frame);
++      }, 'wait for iframe with login form', 120000, 1000);
++    if (!frame) {
++      debug('failed to find login frame after 120 seconds');
++      throw new Error('failed to extract login iframe');
++    }
++    debug('login frame found: ' + (frame ? 'YES' : 'NO'));
++    return frame;
++  } catch (e) {
++    debug('getLoginFrame error: ' + e.message);
++    throw e;
+   }
+-  return frame;
+ }
+ async function hasInvalidPasswordError(page) {
+-  const frame = await getLoginFrame(page);
+-  const errorFound = await (0, _elementsInteractions.elementPresentOnPage)(frame, 'div.general-error > div');
+-  const errorMessage = errorFound ? await (0, _elementsInteractions.pageEval)(frame, 'div.general-error > div', '', item => {
+-    return item.innerText;
+-  }) : '';
+-  return errorMessage === InvalidPasswordMessage;
++  try {
++    const frame = await getLoginFrame(page);
++    const errorFound = await (0, _elementsInteractions.elementPresentOnPage)(frame, 'div.general-error > div');
++    const errorMessage = errorFound ? await (0, _elementsInteractions.pageEval)(frame, 'div.general-error > div', '', item => {
++      return item.innerText;
++    }) : '';
++    debug('hasInvalidPasswordError: errorMessage=' + errorMessage);
++    return errorMessage === InvalidPasswordMessage;
++  } catch (e) {
++    debug('hasInvalidPasswordError error: ' + e.message);
++    return false;
++  }
+ }
+ async function hasChangePasswordForm(page) {
+-  const frame = await getLoginFrame(page);
+-  const errorFound = await (0, _elementsInteractions.elementPresentOnPage)(frame, '.change-password-subtitle');
+-  return errorFound;
++  try {
++    const frame = await getLoginFrame(page);
++    const errorFound = await (0, _elementsInteractions.elementPresentOnPage)(frame, '.change-password-subtitle');
++    debug('hasChangePasswordForm: errorFound=' + errorFound);
++    return errorFound;
++  } catch (e) {
++    debug('hasChangePasswordForm error: ' + e.message);
++    return false;
++  }
+ }
+ function getPossibleLoginResults() {
+   debug('return possible login results');
+@@ -164,7 +182,8 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
      return frame;
    };
    async getCards() {
@@ -106,7 +161,7 @@ index 1fb11a7..e2b85cb 100644
      if (!initData) {
        throw new Error("could not find 'init' data in session storage");
      }
-@@ -179,7 +180,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -179,7 +198,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    async getAuthorizationHeader() {
      if (!this.authorization) {
        debug('fetching authorization header');
@@ -115,7 +170,7 @@ index 1fb11a7..e2b85cb 100644
        return `CALAuthScheme ${authModule.auth.calConnectToken}`;
      }
      return this.authorization;
-@@ -201,7 +202,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -201,7 +220,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    }
    getLoginOptions(credentials) {
      this.authRequestPromise = this.page.waitForRequest(SSO_AUTHORIZATION_REQUEST_ENDPOINT, {
@@ -124,7 +179,7 @@ index 1fb11a7..e2b85cb 100644
      }).catch(e => {
        debug('error while waiting for the token request', e);
        return undefined;
-@@ -215,7 +216,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -215,7 +234,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        preAction: this.openLoginPopup,
        postAction: async () => {
          try {
@@ -135,7 +190,7 @@ index 1fb11a7..e2b85cb 100644
            const currentUrl = await (0, _navigation.getCurrentUrl)(this.page);
            if (currentUrl.endsWith('site-tutorial')) {
              await (0, _elementsInteractions.clickButton)(this.page, 'button.btn-close');
-@@ -223,8 +226,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -223,8 +244,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
            const request = await this.authRequestPromise;
            this.authorization = String(request?.headers().authorization || '').trim();
          } catch (e) {
