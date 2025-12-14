@@ -72,9 +72,10 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY src ./src
 COPY patches ./patches
-COPY database.sql ./.env ./
+COPY database.sql ./.env.example ./
 
-# Remove dev dependencies to reduce image size
+# Note: .env is not included in the image. 
+# Environment variables are passed at runtime via -e flags or .env file mounted as volume
 RUN npm prune --omit=dev
 
 # Set proper ownership
