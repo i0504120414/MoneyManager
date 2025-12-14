@@ -75,7 +75,7 @@ index 6ed10ef..918b7f3 100644
    handleLoginResult(loginResult) {
      switch (loginResult) {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index 1fb11a7..4dbb198 100644
+index 1fb11a7..82d8c86 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
 @@ -16,7 +16,7 @@ var _transactions2 = require("../transactions");
@@ -87,7 +87,7 @@ index 1fb11a7..4dbb198 100644
    Origin: 'https://www.cal-online.co.il',
    Referer: 'https://www.cal-online.co.il/',
    'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
-@@ -55,28 +55,46 @@ function isCardPendingTransactionDetails(result) {
+@@ -55,28 +55,49 @@ function isCardPendingTransactionDetails(result) {
  async function getLoginFrame(page) {
    let frame = null;
    debug('wait until login frame found');
@@ -128,7 +128,10 @@ index 1fb11a7..4dbb198 100644
 +    const errorMessage = errorFound ? await (0, _elementsInteractions.pageEval)(frame, 'div.general-error > div', '', item => {
 +      return item.innerText;
 +    }) : '';
-+    debug('hasInvalidPasswordError: errorMessage=' + errorMessage);
++    debug('hasInvalidPasswordError: errorMessage=' + (errorMessage || 'NO_ERROR'));
++    if (errorFound) {
++      debug('ERROR FOUND ON PAGE: ' + errorMessage);
++    }
 +    return errorMessage === InvalidPasswordMessage;
 +  } catch (e) {
 +    debug('hasInvalidPasswordError error: ' + e.message);
@@ -151,7 +154,16 @@ index 1fb11a7..4dbb198 100644
  }
  function getPossibleLoginResults() {
    debug('return possible login results');
-@@ -164,7 +182,8 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -102,6 +123,8 @@ function getPossibleLoginResults() {
+ }
+ function createLoginFields(credentials) {
+   debug('create login fields for username and password');
++  debug('username field selector: [formcontrolname="userName"]');
++  debug('password field selector: [formcontrolname="password"]');
+   return [{
+     selector: '[formcontrolname="userName"]',
+     value: credentials.username
+@@ -164,7 +187,8 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
      return frame;
    };
    async getCards() {
@@ -161,7 +173,7 @@ index 1fb11a7..4dbb198 100644
      if (!initData) {
        throw new Error("could not find 'init' data in session storage");
      }
-@@ -179,7 +198,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -179,7 +203,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    async getAuthorizationHeader() {
      if (!this.authorization) {
        debug('fetching authorization header');
@@ -170,7 +182,7 @@ index 1fb11a7..4dbb198 100644
        return `CALAuthScheme ${authModule.auth.calConnectToken}`;
      }
      return this.authorization;
-@@ -201,7 +220,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -201,7 +225,7 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    }
    getLoginOptions(credentials) {
      this.authRequestPromise = this.page.waitForRequest(SSO_AUTHORIZATION_REQUEST_ENDPOINT, {
@@ -179,7 +191,7 @@ index 1fb11a7..4dbb198 100644
      }).catch(e => {
        debug('error while waiting for the token request', e);
        return undefined;
-@@ -215,7 +234,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -215,16 +239,41 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        preAction: this.openLoginPopup,
        postAction: async () => {
          try {
@@ -188,11 +200,33 @@ index 1fb11a7..4dbb198 100644
 +          // Note: removed waitForNavigation to avoid timeout issues
 +          // await (0, _navigation.waitForNavigation)(this.page, { timeout: 120000 });
            const currentUrl = await (0, _navigation.getCurrentUrl)(this.page);
++          debug('postAction: current URL after form submission = ' + currentUrl);
++          
++          // Try to get page content to diagnose
++          const pageContent = await this.page.content();
++          const hasFormStillVisible = pageContent.includes('formcontrolname="userName"');
++          debug('postAction: form still visible = ' + hasFormStillVisible);
++          
            if (currentUrl.endsWith('site-tutorial')) {
              await (0, _elementsInteractions.clickButton)(this.page, 'button.btn-close');
-@@ -223,8 +244,9 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+           }
            const request = await this.authRequestPromise;
            this.authorization = String(request?.headers().authorization || '').trim();
++          debug('postAction: authorization token = ' + (this.authorization ? 'RECEIVED' : 'NOT_RECEIVED'));
++          
++          // Wait for dashboard URL to appear
++          try {
++            debug('postAction: waiting for dashboard URL...');
++            await (0, _waiting.waitUntil)(async () => {
++              const dashboardUrl = await (0, _navigation.getCurrentUrl)(this.page);
++              const isDashboard = dashboardUrl.includes('dashboard');
++              debug('postAction: checking URL for dashboard: ' + dashboardUrl + ' includes dashboard: ' + isDashboard);
++              return isDashboard;
++            }, 'wait for dashboard URL', 30000, 1000);
++            debug('postAction: dashboard URL detected');
++          } catch (dashboardWaitError) {
++            debug('postAction: dashboard URL not reached in time, but continuing. Error: ' + dashboardWaitError.message);
++          }
          } catch (e) {
 -          const currentUrl = await (0, _navigation.getCurrentUrl)(this.page);
 -          if (currentUrl.endsWith('dashboard')) return;

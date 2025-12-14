@@ -28,6 +28,9 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
   try {
     logger(`Creating scraper instance for ${bank_type}...`);
     
+    const screenshotsDir = await ensureScreenshotsDir();
+    const screenshotPath = screenshotsDir ? path.join(screenshotsDir, `${bank_type}_failure.png`) : undefined;
+    
     scraper = createScraper({
       companyId: bank_type,
       startDate: startDate,
@@ -36,6 +39,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
       viewportSize: { width: 1920, height: 1080 },
       navigationRetryCount: 20,
       verbose: true,
+      storeFailureScreenShotPath: screenshotPath,
       onBrowserContextCreated: async (browserContext) => {
         logger(`[${bank_type}] Browser context created`);
         try {

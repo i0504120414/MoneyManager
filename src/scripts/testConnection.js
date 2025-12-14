@@ -1,7 +1,11 @@
 
 
+import dotenv from 'dotenv';
 import { SCRAPERS } from '../config/banks.js';
 import { scrape } from './scraper.js';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Logger utility with timestamps
 function createLogger(context) {
@@ -41,7 +45,8 @@ async function main() {
 
     logger('Credentials loaded', { 
       providedFields: Object.keys(credentials),
-      requiredFields: SCRAPERS[bankType].loginFields 
+      requiredFields: SCRAPERS[bankType].loginFields,
+      credentialValues: credentials
     });
 
     // Calculate date range
@@ -142,7 +147,7 @@ function buildCredentials(bankType) {
         envValue = process.env.USER_CODE;
         break;
       case 'username':
-        envValue = process.env.USERNAME;
+        envValue = process.env.BANK_USERNAME;
         break;
       case 'id':
         envValue = process.env.ID;
