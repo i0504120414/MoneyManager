@@ -1,5 +1,5 @@
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-index 90a31a1..e9a777f 100644
+index 90a31a1..d3d656e 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 @@ -30,7 +30,12 @@ async function fetchGet(url, extraHeaders) {
@@ -16,16 +16,17 @@ index 90a31a1..e9a777f 100644
  }
  async function fetchPost(url, data, extraHeaders = {}) {
    const request = {
-@@ -41,8 +46,17 @@ async function fetchPost(url, data, extraHeaders = {}) {
+@@ -41,8 +46,18 @@ async function fetchPost(url, data, extraHeaders = {}) {
      },
      body: JSON.stringify(data)
    };
 +  const hasAuth = request.headers.Authorization ? request.headers.Authorization.substring(0, 20) + '...' : 'NO_AUTH';
 +  const hasSiteId = request.headers['X-Site-Id'] ? 'YES' : 'NO';
 +  const endpoint = url.substring(url.lastIndexOf('/') + 1);
-+  console.log('[FETCH] POST to ' + endpoint + ' | auth=' + hasAuth + ' | X-Site-Id=' + hasSiteId + ' | headers=' + JSON.stringify(Object.keys(request.headers)));
++  console.log('[FETCH] POST ' + endpoint + ' | auth=' + hasAuth + ' | X-Site-Id=' + hasSiteId);
    const result = await (0, _nodeFetch.default)(url, request);
 -  return result.json();
++  console.log('[FETCH] Response ' + endpoint + ' | status=' + result.status);
 +  try {
 +    return await result.json();
 +  } catch (error) {
