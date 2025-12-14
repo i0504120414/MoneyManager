@@ -13,7 +13,8 @@ yarn.lock
 account-summary.json
 accounts-list.json
 scraping-results.json
-screenshots/
+screenshots/*
+!screenshots/README.md
 
 # IDE
 .vscode/
