@@ -72,7 +72,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY src ./src
 COPY patches ./patches
-COPY database.sql ./.env.example ./
+COPY database.sql ./.env ./
 
 # Remove dev dependencies to reduce image size
 RUN npm prune --omit=dev

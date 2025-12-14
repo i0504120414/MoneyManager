@@ -9,7 +9,12 @@ const logger = createLogger('scraper');
 
 // Create screenshots directory if it doesn't exist
 async function ensureScreenshotsDir() {
-  const screenshotsDir = path.join(process.cwd(), 'app', 'screenshots');
+  // In Docker, process.cwd() = /app, so we want /app/screenshots
+  // Locally, process.cwd() = project root, so we want app/screenshots
+  const isDocker = process.env.NODE_ENV === 'production' && process.cwd() === '/app';
+  const screenshotsDir = isDocker 
+    ? path.join(process.cwd(), 'screenshots')
+    : path.join(process.cwd(), 'app', 'screenshots');
   try {
     await fs.mkdir(screenshotsDir, { recursive: true });
     return screenshotsDir;
