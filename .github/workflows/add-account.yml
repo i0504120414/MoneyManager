@@ -1,0 +1,182 @@
+name: Test Bank Connection & Add Account
+
+on:
+  workflow_dispatch:
+    inputs:
+      bank_type:
+        description: 'Bank Type'
+        required: true
+        type: choice
+        options:
+          - hapoalim
+          - beinleumi
+          - union
+          - amex
+          - isracard
+          - visaCal
+          - max
+          - otsarHahayal
+          - discount
+          - mercantile
+          - mizrahi
+          - leumi
+          - massad
+          - yahav
+          - behatsdaa
+          - beyahadBishvilha
+          - oneZero
+          - pagi
+      
+      userCode:
+        description: 'User Code (for hapoalim)'
+        required: false
+      
+      username:
+        description: 'Username (if applicable)'
+        required: false
+      
+      id:
+        description: 'ID (for banks requiring ID)'
+        required: false
+      
+      password:
+        description: 'Password'
+        required: false
+      
+      num:
+        description: 'Branch/Account Number (if applicable)'
+        required: false
+      
+      card6Digits:
+        description: 'Last 6 digits of card (for Isracard/Amex)'
+        required: false
+      
+      nationalID:
+        description: 'National ID (for Yahav)'
+        required: false
+      
+      email:
+        description: 'Email (for One Zero)'
+        required: false
+      
+      phoneNumber:
+        description: 'Phone Number (for One Zero)'
+        required: false
+      
+      otpCodeRetriever:
+        description: 'OTP Code (for One Zero)'
+        required: false
+      
+      otpLongTermToken:
+        description: 'Long Term Token (for One Zero)'
+        required: false
+
+jobs:
+  test_and_add:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/i0504120414/moneymanager:latest || (echo "Image not found, building locally..." && docker build -t ghcr.io/i0504120414/moneymanager:latest .)
+      
+      - name: Test Bank Connection
+        env:
+          BANK_TYPE: ${{ github.event.inputs.bank_type }}
+          BANK_USERNAME: ${{ github.event.inputs.username }}
+          USER_CODE: ${{ github.event.inputs.userCode }}
+          ID: ${{ github.event.inputs.id }}
+          PASSWORD: ${{ github.event.inputs.password }}
+          NUM: ${{ github.event.inputs.num }}
+          CARD_6_DIGITS: ${{ github.event.inputs.card6Digits }}
+          NATIONAL_ID: ${{ github.event.inputs.nationalID }}
+          EMAIL: ${{ github.event.inputs.email }}
+          PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
+          OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
+          OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+          DEBUG: '*,-puppeteer:*'
+        run: |
+          docker run --rm \
+            -e BANK_TYPE="$BANK_TYPE" \
+            -e BANK_USERNAME="$BANK_USERNAME" \
+            -e USER_CODE="$USER_CODE" \
+            -e ID="$ID" \
+            -e PASSWORD="$PASSWORD" \
+            -e NUM="$NUM" \
+            -e CARD_6_DIGITS="$CARD_6_DIGITS" \
+            -e NATIONAL_ID="$NATIONAL_ID" \
+            -e EMAIL="$EMAIL" \
+            -e PHONE_NUMBER="$PHONE_NUMBER" \
+            -e OTP_CODE="$OTP_CODE" \
+            -e OTP_LONG_TERM_TOKEN="$OTP_LONG_TERM_TOKEN" \
+            -e SUPABASE_URL="$SUPABASE_URL" \
+            -e SUPABASE_KEY="$SUPABASE_KEY" \
+            -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+            -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+            -e DEBUG='*,-puppeteer:*' \
+            ghcr.io/i0504120414/moneymanager:latest \
+            src/scripts/testConnection.js
+      
+      - name: Add Account to Database
+        if: success()
+        env:
+          BANK_TYPE: ${{ github.event.inputs.bank_type }}
+          BANK_USERNAME: ${{ github.event.inputs.username }}
+          USER_CODE: ${{ github.event.inputs.userCode }}
+          ID: ${{ github.event.inputs.id }}
+          PASSWORD: ${{ github.event.inputs.password }}
+          NUM: ${{ github.event.inputs.num }}
+          CARD_6_DIGITS: ${{ github.event.inputs.card6Digits }}
+          NATIONAL_ID: ${{ github.event.inputs.nationalID }}
+          EMAIL: ${{ github.event.inputs.email }}
+          PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
+          OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
+          OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+          DEBUG: '*,-puppeteer:*'
+          
+        run: |
+          docker run --rm \
+            -e BANK_TYPE="$BANK_TYPE" \
+            -e BANK_USERNAME="$BANK_USERNAME" \
+            -e USER_CODE="$USER_CODE" \
+            -e ID="$ID" \
+            -e PASSWORD="$PASSWORD" \
+            -e NUM="$NUM" \
+            -e CARD_6_DIGITS="$CARD_6_DIGITS" \
+            -e NATIONAL_ID="$NATIONAL_ID" \
+            -e EMAIL="$EMAIL" \
+            -e PHONE_NUMBER="$PHONE_NUMBER" \
+            -e OTP_CODE="$OTP_CODE" \
+            -e OTP_LONG_TERM_TOKEN="$OTP_LONG_TERM_TOKEN" \
+            -e SUPABASE_URL="$SUPABASE_URL" \
+            -e SUPABASE_KEY="$SUPABASE_KEY" \
+            -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+            -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+            -e DEBUG='*,-puppeteer:*' \
+            ghcr.io/i0504120414/moneymanager:latest \
+            src/scripts/addAccount.js
+      
+      - name: Upload error screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: add-account-screenshots-${{ github.run_id }}
+          path: app/screenshots/
+          retention-days: 30
+          if-no-files-found: ignore

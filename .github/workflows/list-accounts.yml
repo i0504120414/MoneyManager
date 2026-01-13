@@ -1,0 +1,32 @@
+name: List Bank Accounts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list_accounts:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: List All Accounts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: node src/scripts/listAccounts.js
+      
+      - name: Upload Account List
+        uses: actions/upload-artifact@v4
+        with:
+          name: accounts-list
+          path: accounts-list.json
+          retention-days: 30

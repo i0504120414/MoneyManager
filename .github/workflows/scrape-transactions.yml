@@ -1,0 +1,66 @@
+name: Scrape Bank Transactions
+
+on:
+  workflow_dispatch:
+    inputs:
+      account_id:
+        description: 'Account ID to scrape'
+        required: true
+        type: string
+      
+      scraping_mode:
+        description: 'Scraping Mode'
+        required: true
+        type: choice
+        default: 'regular'
+        options:
+          - regular
+          - update
+          - max
+      
+      start_date:
+        description: 'Start Date (ISO format, for custom mode only)'
+        required: false
+        type: string
+  
+  # schedule:
+  #   # Run every day at 8 AM UTC
+  #   - cron: '0 8 * * *'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Scrape Transactions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          ACCOUNT_ID: ${{ github.event.inputs.account_id }}
+          SCRAPING_MODE: ${{ github.event.inputs.scraping_mode || 'regular' }}
+          START_DATE: ${{ github.event.inputs.start_date }}
+        run: node src/scripts/scrapeTransactions.js
+      
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraping-results-${{ github.event.inputs.account_id || 'scheduled' }}
+          path: scraping-results.json
+          retention-days: 30
+      
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Scraping failed for account ${{ github.event.inputs.account_id || 'scheduled' }}"
+          exit 1
