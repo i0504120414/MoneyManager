@@ -15,6 +15,7 @@
     "ky": "^1.14.1"
   },
   "devDependencies": {
+    "@expo/metro-config": "^54.0.13",
     "patch-package": "^8.0.1"
   }
 }
