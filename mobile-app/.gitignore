@@ -1,8 +1,0 @@
-node_modules/
-.expo/
-.vscode/
-npm-debug.log
-yarn-error.log
-assets/
-dist/
-web-build/
