@@ -86,6 +86,9 @@ jobs:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
           DEBUG: 'israeli-bank-scrapers:*'
         run: |
+          # Create empty file before mounting (prevents Docker from creating a directory)
+          touch sync-results.json
+          
           # Credentials are stored in Supabase bank_user_accounts.credentials
           # No need for separate secrets per account
           docker run --rm \

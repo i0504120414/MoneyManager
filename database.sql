@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
   hash VARCHAR(64) UNIQUE,
-  identifier INT,
+  identifier BIGINT,
   date TIMESTAMP NOT NULL,
   processed_date TIMESTAMP,
   original_amount DECIMAL(12, 2),
