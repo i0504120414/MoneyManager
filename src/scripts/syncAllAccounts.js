@@ -49,15 +49,24 @@ async function syncAccount(supabase, userAccount, credentials) {
   console.log(`\n🔄 Syncing account: ${userAccountId} (${bankType})`);
   logger.info('Starting sync for account', { userAccountId, bankType });
 
-  // Calculate start date (30 days ago by default, or last_updated)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Calculate start date:
+  // - If last_updated exists: start from that date (with 2 day overlap for safety)
+  // - If first time (no last_updated): go back maximum time (6 months for most banks)
+  let startDate;
   
-  const startDate = userAccount.last_updated 
-    ? new Date(Math.max(new Date(userAccount.last_updated).getTime(), thirtyDaysAgo.getTime()))
-    : thirtyDaysAgo;
-
-  console.log(`   Start date: ${startDate.toISOString().split('T')[0]}`);
+  if (userAccount.last_updated) {
+    // Existing account - start from last update with 2 day overlap
+    const lastUpdate = new Date(userAccount.last_updated);
+    lastUpdate.setDate(lastUpdate.getDate() - 2); // 2 day overlap for safety
+    startDate = lastUpdate;
+    console.log(`   📅 Continuing from last sync: ${startDate.toISOString().split('T')[0]}`);
+  } else {
+    // First time sync - go back maximum time (6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    startDate = sixMonthsAgo;
+    console.log(`   📅 First sync - fetching max history: ${startDate.toISOString().split('T')[0]}`);
+  }
 
   try {
     // Scrape transactions
