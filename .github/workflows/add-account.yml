@@ -74,6 +74,10 @@ on:
 jobs:
   test_and_add:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: write
     
     steps:
       - uses: actions/checkout@v4
