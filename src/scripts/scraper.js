@@ -19,7 +19,7 @@ async function ensureScreenshotsDir() {
     await fs.mkdir(screenshotsDir, { recursive: true });
     return screenshotsDir;
   } catch (error) {
-    logger('Failed to create screenshots directory:', error.message);
+    logger.error('Failed to create screenshots directory', { error: error.message });
   }
   return null;
 }
@@ -31,7 +31,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
   let scraper = null;
   
   try {
-    logger(`Creating scraper instance for ${bank_type}...`);
+    logger.info(`Creating scraper instance for ${bank_type}...`);
     
     const screenshotsDir = await ensureScreenshotsDir();
     const screenshotPath = screenshotsDir ? path.join(screenshotsDir, `${bank_type}_failure.png`) : undefined;
@@ -46,24 +46,24 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
       verbose: true,
       storeFailureScreenShotPath: screenshotPath,
       onBrowserContextCreated: async (browserContext) => {
-        logger(`[${bank_type}] Browser context created`);
+        logger.info(`[${bank_type}] Browser context created`);
         try {
           await initDomainTracking(browserContext, bank_type);
           browserContext.on('page', (page) => {
             setupCloudflareBypass(page);
           });
         } catch (error) {
-          logger(`[${bank_type}] Security setup error: ${error.message}`);
+          logger.error(`[${bank_type}] Security setup error`, { error: error.message });
         }
       }
     });
     
-    logger(`Starting scrape...`);
+    logger.info(`Starting scrape...`);
     const result = await scraper.scrape(credentials);
     return result;
     
   } catch (error) {
-    logger(`Scrape exception: ${error.message}`);
+    logger.error(`Scrape exception`, { error: error.message });
     return {
       success: false,
       accounts: [],
@@ -73,10 +73,10 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
   } finally {
     if (scraper?.browser) {
       try {
-        logger(`Closing browser...`);
+        logger.info(`Closing browser...`);
         await scraper.browser.close();
       } catch (error) {
-        logger(`Browser cleanup error: ${error.message}`);
+        logger.error(`Browser cleanup error`, { error: error.message });
       }
     }
   }
@@ -84,7 +84,7 @@ async function scrapeWithRetry(bank_type, credentials, startDate) {
 
 // Single scrape attempt (backward compatible)
 async function scrapeOnce(bank_type, credentials, startDate) {
-  logger(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
+  logger.info(`Scraping data for bank: ${bank_type} starting from ${startDate.toISOString().split('T')[0]}`);
 
   const screenshotsDir = await ensureScreenshotsDir();
   const screenshotPath = screenshotsDir ? path.join(screenshotsDir, `${bank_type}_failure.png`) : undefined;
@@ -98,23 +98,22 @@ async function scrapeOnce(bank_type, credentials, startDate) {
     verbose: true,
     storeFailureScreenShotPath: screenshotPath,
     onBrowserContextCreated: async (browserContext) => {
-      logger(`[${bank_type}] Browser context created`);
+      logger.info(`[${bank_type}] Browser context created`);
       try {
         await initDomainTracking(browserContext, bank_type);
         browserContext.on('page', (page) => {
           setupCloudflareBypass(page);
         });
       } catch (error) {
-        logger(`[${bank_type}] Security setup error: ${error.message}`);
+        logger.error(`[${bank_type}] Security setup error`, { error: error.message });
       }
     }
   });
 
   try {
-    logger(`[${bank_type}] Starting scraper...`);
+    logger.info(`[${bank_type}] Starting scraper...`);
     const result = await scraper.scrape(credentials);
-    logger(` Scraping completed for bank: ${bank_type}`);
-    logger('Scrape result:', {
+    logger.info(`Scraping completed for bank: ${bank_type}`, {
       success: result.success,
       accountCount: result.accounts?.length || 0,
       errorType: result.errorType,
@@ -122,15 +121,15 @@ async function scrapeOnce(bank_type, credentials, startDate) {
     });
     
     if (!result.success) {
-      logger(`[ERROR] Scraper reported failure:`);
-      logger(`  Error Type: ${result.errorType}`);
-      logger(`  Error Message: ${result.errorMessage}`);
+      logger.error(`Scraper reported failure`, {
+        errorType: result.errorType,
+        errorMessage: result.errorMessage
+      });
     }
     
     return result;
   } catch (error) {
-    logger(` Scraping failed with exception: ${error.message}`);
-    logger(`Stack: ${error.stack}`);
+    logger.error(`Scraping failed with exception`, { error: error.message, stack: error.stack });
     return { success: false, error: error.message };
   }
 }
