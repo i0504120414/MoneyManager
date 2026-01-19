@@ -35,7 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull Docker image
+      - name: Pull Docker image or build locally
         run: docker pull ghcr.io/i0504120414/moneymanager:latest || (echo "Image not found, building locally..." && docker build -t ghcr.io/i0504120414/moneymanager:latest .)
       
       - name: Get all accounts from Supabase
@@ -69,17 +69,21 @@ jobs:
           #    d. Detect recurring transactions
           #    e. Create logs entry
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Detect recurring transactions
         if: always()
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          docker run --rm \
-            -e SUPABASE_URL="$SUPABASE_URL" \
-            -e SUPABASE_KEY="$SUPABASE_KEY" \
-            ghcr.io/i0504120414/moneymanager:latest \
-            src/scripts/detectRecurring.js
+        run: node src/scripts/detectRecurring.js
       
       - name: Create sync log
         if: always()
