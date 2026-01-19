@@ -296,9 +296,9 @@ async function main() {
       console.log('🔍 Running recurring detection for all accounts...');
       
       const { data: accounts, error } = await supabase
-        .from('accounts')
-        .select('id, bank_name')
-        .eq('status', 'active');
+        .from('bank_accounts')
+        .select('id, bank_type')
+        .eq('is_active', true);
       
       if (error) {
         // Handle case where table doesn't exist yet
@@ -321,7 +321,7 @@ async function main() {
       let totalResults = { installments: 0, directDebits: 0, algorithmicDetected: 0, total: 0 };
 
       for (const account of accounts) {
-        console.log(`\nProcessing account: ${account.bank_name} (${account.id})`);
+        console.log(`\nProcessing account: ${account.bank_type} (${account.id})`);
         const result = await detectRecurringForAccount(supabase, account.id);
         
         if (result.success) {
