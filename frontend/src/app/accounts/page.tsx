@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { api, Account } from '@/lib/supabase';
+import {
+  triggerWorkflow,
+  getWorkflowRuns,
+  WorkflowRun,
+  BANKS,
+  FIELD_LABELS,
+} from '@/lib/github';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   Building2,
@@ -14,8 +21,14 @@ import {
   AlertCircle,
   Clock,
   ExternalLink,
+  Plus,
+  Play,
+  X,
+  Eye,
+  EyeOff,
+  Settings,
 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 export default function AccountsPage() {
@@ -23,7 +36,13 @@ export default function AccountsPage() {
   const router = useRouter();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [githubToken, setGithubToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -32,21 +51,72 @@ export default function AccountsPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const accountsData = await api.getAccounts();
-        setAccounts(accountsData || []);
-      } catch (error) {
-        console.error('Error fetching accounts:', error);
-      } finally {
-        setLoading(false);
+    // Load token from localStorage
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem('github_token');
+      if (savedToken) {
+        setGithubToken(savedToken);
       }
-    };
+    }
+  }, []);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const accountsData = await api.getAccounts();
+      setAccounts(accountsData || []);
+
+      // Fetch workflow runs if token exists
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('github_token');
+        if (token) {
+          const runs = await getWorkflowRuns(token);
+          setWorkflowRuns(runs);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       fetchData();
+      // Refresh every 30 seconds to update workflow status
+      const interval = setInterval(fetchData, 30000);
+      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, fetchData]);
+
+  const handleSync = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+    if (!token) {
+      setShowTokenModal(true);
+      return;
+    }
+
+    setSyncing(true);
+    const result = await triggerWorkflow('daily-sync.yml', { sync_mode: 'update' }, token);
+    
+    if (result.success) {
+      setTimeout(fetchData, 3000);
+    } else {
+      alert('שגיאה: ' + result.error);
+    }
+    
+    setSyncing(false);
+  };
+
+  const handleSaveToken = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('github_token', githubToken);
+    }
+    setShowTokenModal(false);
+    fetchData();
+  };
+
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('github_token');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -118,10 +188,44 @@ export default function AccountsPage() {
       <main className="flex-1 p-6 lg:p-8 mr-0 lg:mr-64">
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">חשבונות מחוברים</h1>
               <p className="text-slate-500">ניהול חשבונות בנק וכרטיסי אשראי</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowTokenModal(true)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                title="הגדרות GitHub Token"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleSync}
+                disabled={syncing || !hasToken}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 spinner" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+                <span>סנכרון</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!hasToken) {
+                    setShowTokenModal(true);
+                  } else {
+                    setShowAddModal(true);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>הוסף חשבון</span>
+              </button>
             </div>
           </div>
 
@@ -152,11 +256,44 @@ export default function AccountsPage() {
               <div>
                 <p className="text-sm text-amber-700 font-medium">הוספת חשבונות</p>
                 <p className="text-sm text-amber-600 mt-1">
-                  כדי להוסיף חשבון חדש, הרץ את הפעולה Add Account ב-GitHub Actions עם פרטי ההתחברות המתאימים.
+                  {!hasToken 
+                    ? 'כדי להוסיף חשבון, לחץ על ⚙️ והזן GitHub Token עם הרשאות workflow.'
+                    : 'לחץ על "הוסף חשבון" לחיבור חשבון בנק או כרטיס אשראי חדש.'}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Activity Indicator */}
+          {workflowRuns.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-100">
+                <h2 className="text-lg font-semibold text-slate-800">פעילות אחרונה</h2>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                {workflowRuns.map((run) => (
+                  <div key={run.id} className="p-3 flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        run.status === 'completed' 
+                          ? run.conclusion === 'success' ? 'bg-green-500' : 'bg-red-500'
+                          : run.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' : 'bg-slate-300'
+                      }`} />
+                      <span className="text-slate-700">{run.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-400">
+                      <span>
+                        {run.status === 'completed' 
+                          ? run.conclusion === 'success' ? '✓ הצליח' : '✗ נכשל'
+                          : run.status === 'in_progress' ? 'פועל...' : 'ממתין'}
+                      </span>
+                      <span>{formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: he })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Accounts List */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -234,7 +371,201 @@ export default function AccountsPage() {
             </div>
           </div>
         </div>
+
+        {/* Token Settings Modal */}
+        {showTokenModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">הגדרות GitHub Token</h2>
+                <button onClick={() => setShowTokenModal(false)} className="text-slate-400 hover:text-slate-600" title="סגור">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">GitHub Personal Access Token</label>
+                  <div className="relative">
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      value={githubToken}
+                      onChange={(e) => setGithubToken(e.target.value)}
+                      className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      dir="ltr"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    >
+                      {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    צור Token ב-GitHub Settings → Developer settings → Personal access tokens
+                    עם הרשאות: repo, workflow
+                  </p>
+                </div>
+              </div>
+              <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowTokenModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={handleSaveToken}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  שמור
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Account Modal */}
+        {showAddModal && (
+          <AddAccountModal 
+            onClose={() => setShowAddModal(false)} 
+            onSuccess={() => {
+              setShowAddModal(false);
+              setTimeout(fetchData, 3000);
+            }}
+          />
+        )}
       </main>
+    </div>
+  );
+}
+
+// Add Account Modal Component
+function AddAccountModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [selectedBank, setSelectedBank] = useState('');
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+
+  const selectedBankConfig = BANKS.find(b => b.id === selectedBank);
+
+  const handleSubmit = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+    if (!token || !selectedBank) return;
+
+    setSubmitting(true);
+    
+    const inputs: Record<string, string> = { bank_type: selectedBank };
+    selectedBankConfig?.fields.forEach(field => {
+      inputs[field] = credentials[field] || '';
+    });
+
+    const result = await triggerWorkflow('add-account.yml', inputs, token);
+    
+    if (result.success) {
+      onSuccess();
+    } else {
+      alert('שגיאה: ' + result.error);
+    }
+    
+    setSubmitting(false);
+  };
+
+  const togglePasswordVisibility = (field: string) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const isPasswordField = (field: string) => {
+    return field.toLowerCase().includes('password') || 
+           field.toLowerCase().includes('code') ||
+           field.toLowerCase().includes('num');
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">הוספת חשבון חדש</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" title="סגור">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Bank Selection */}
+          <div>
+            <label htmlFor="bank-select" className="block text-sm font-medium text-slate-700 mb-2">בחר בנק/כרטיס</label>
+            <select
+              id="bank-select"
+              value={selectedBank}
+              onChange={(e) => {
+                setSelectedBank(e.target.value);
+                setCredentials({});
+              }}
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">בחר...</option>
+              {BANKS.map(bank => (
+                <option key={bank.id} value={bank.id}>{bank.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Credential Fields */}
+          {selectedBankConfig && selectedBankConfig.fields.map(field => (
+            <div key={field}>
+              <label htmlFor={`field-${field}`} className="block text-sm font-medium text-slate-700 mb-2">
+                {FIELD_LABELS[field] || field}
+              </label>
+              <div className="relative">
+                <input
+                  id={`field-${field}`}
+                  type={isPasswordField(field) && !showPasswords[field] ? 'password' : 'text'}
+                  value={credentials[field] || ''}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, [field]: e.target.value }))}
+                  className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder={FIELD_LABELS[field] || field}
+                  dir="ltr"
+                />
+                {isPasswordField(field) && (
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility(field)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    title={showPasswords[field] ? 'הסתר' : 'הצג'}
+                  >
+                    {showPasswords[field] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {selectedBank && (
+            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-sm text-amber-700">
+              ⚠️ הפרטים יישלחו ל-GitHub Actions ויאוחסנו כ-Secrets מוצפנים.
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          >
+            ביטול
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!selectedBank || submitting}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition flex items-center gap-2"
+          >
+            {submitting && <Loader2 className="w-4 h-4 spinner" />}
+            <span>הוסף חשבון</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

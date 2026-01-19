@@ -6,6 +6,8 @@
   "scripts": {
     "test:connection": "node src/scripts/testConnection.js",
     "scrape": "node src/scripts/scrapeTransactions.js",
+    "add-account": "node cli.js add-account",
+    "sync": "node cli.js sync",
     "postinstall": "patch-package"
   },
   "dependencies": {
