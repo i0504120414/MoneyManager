@@ -79,7 +79,7 @@ jobs:
             -e SUPABASE_URL="$SUPABASE_URL" \
             -e SUPABASE_KEY="$SUPABASE_KEY" \
             ghcr.io/i0504120414/moneymanager:latest \
-            node -e "console.log('🔍 Recurring transaction detection would run here')"
+            src/scripts/detectRecurring.js
       
       - name: Create sync log
         if: always()
