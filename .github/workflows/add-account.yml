@@ -28,47 +28,47 @@ on:
           - pagi
       
       userCode:
-        description: 'User Code (for hapoalim)'
+        description: 'User Code (hapoalim only)'
         required: false
       
       username:
-        description: 'Username (if applicable)'
+        description: 'Username/ID - תעודת זהות (visaCal, leumi, mizrahi, max, otsarHahayal, union, beinleumi, massad, pagi, yahav)'
         required: false
       
       id:
-        description: 'ID (for banks requiring ID)'
+        description: 'ID Number - תעודת זהות (discount, mercantile, isracard, amex, beyahadBishvilha, behatsdaa)'
         required: false
       
       password:
-        description: 'Password'
+        description: 'Password - סיסמא (all banks)'
         required: false
       
       num:
-        description: 'Branch/Account Number (if applicable)'
+        description: 'Branch/Account Number - מספר סניף (discount, mercantile only)'
         required: false
       
       card6Digits:
-        description: 'Last 6 digits of card (for Isracard/Amex)'
+        description: 'Last 6 digits of card - 6 ספרות אחרונות של הכרטיס (isracard, amex only)'
         required: false
       
       nationalID:
-        description: 'National ID (for Yahav)'
+        description: 'National ID - תעודת זהות (yahav only)'
         required: false
       
       email:
-        description: 'Email (for One Zero)'
+        description: 'Email (oneZero only)'
         required: false
       
       phoneNumber:
-        description: 'Phone Number (for One Zero)'
+        description: 'Phone Number (oneZero only)'
         required: false
       
       otpCodeRetriever:
-        description: 'OTP Code (for One Zero)'
+        description: 'OTP Code (oneZero only)'
         required: false
       
       otpLongTermToken:
-        description: 'Long Term Token (for One Zero)'
+        description: 'Long Term Token (oneZero only)'
         required: false
 
 jobs:

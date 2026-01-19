@@ -162,7 +162,7 @@ function buildCredentials(bankType) {
         envValue = process.env.USER_CODE;
         break;
       case 'username':
-        envValue = process.env.USERNAME;
+        envValue = process.env.BANK_USERNAME || process.env.USERNAME;
         break;
       case 'id':
         envValue = process.env.ID;
@@ -197,6 +197,8 @@ function buildCredentials(bankType) {
 
     if (envValue) {
       credentials[field] = envValue;
+    } else {
+      console.warn(`⚠️ Missing required field: ${field} for ${bankType}`);
     }
   }
 
