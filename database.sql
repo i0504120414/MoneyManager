@@ -58,11 +58,34 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
 
--- Enable Row Level Security (RLS) - adjust policies as needed
+-- Enable Row Level Security (RLS) for all tables
+ALTER TABLE bank_user_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring ENABLE ROW LEVEL SECURITY;
+ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transaction_categories ENABLE ROW LEVEL SECURITY;
 
--- Create policies for public access
+-- =============================================================================
+-- RLS Policies for bank_user_accounts
+-- =============================================================================
+CREATE POLICY "Allow public read access to user_accounts" ON bank_user_accounts
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to user_accounts" ON bank_user_accounts
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update to user_accounts" ON bank_user_accounts
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to user_accounts" ON bank_user_accounts
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- RLS Policies for bank_accounts
+-- =============================================================================
 CREATE POLICY "Allow public read access to accounts" ON bank_accounts
   FOR SELECT USING (true);
 
@@ -72,11 +95,86 @@ CREATE POLICY "Allow public insert to accounts" ON bank_accounts
 CREATE POLICY "Allow public update to accounts" ON bank_accounts
   FOR UPDATE USING (true) WITH CHECK (true);
 
+CREATE POLICY "Allow public delete to accounts" ON bank_accounts
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- RLS Policies for transactions
+-- =============================================================================
 CREATE POLICY "Allow public read access to transactions" ON transactions
   FOR SELECT USING (true);
 
 CREATE POLICY "Allow public insert to transactions" ON transactions
   FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update to transactions" ON transactions
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to transactions" ON transactions
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- RLS Policies for categories
+-- =============================================================================
+CREATE POLICY "Allow public read access to categories" ON categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to categories" ON categories
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update to categories" ON categories
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to categories" ON categories
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- RLS Policies for recurring
+-- =============================================================================
+CREATE POLICY "Allow public read access to recurring" ON recurring
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to recurring" ON recurring
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update to recurring" ON recurring
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to recurring" ON recurring
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- RLS Policies for logs
+-- =============================================================================
+CREATE POLICY "Allow public read access to logs" ON logs
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to logs" ON logs
+  FOR INSERT WITH CHECK (true);
+
+-- =============================================================================
+-- RLS Policies for notifications
+-- =============================================================================
+CREATE POLICY "Allow public read access to notifications" ON notifications
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to notifications" ON notifications
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update to notifications" ON notifications
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+-- =============================================================================
+-- RLS Policies for transaction_categories
+-- =============================================================================
+CREATE POLICY "Allow public read access to transaction_categories" ON transaction_categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert to transaction_categories" ON transaction_categories
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public delete to transaction_categories" ON transaction_categories
+  FOR DELETE USING (true);
 
 
 -- =============================================================================
