@@ -3,6 +3,10 @@
 -- Paste this into Supabase SQL Editor
 -- =============================================================================
 
+-- =============================================================================
+-- STEP 1: CREATE ALL TABLES
+-- =============================================================================
+
 -- Create bank_user_accounts table
 CREATE TABLE IF NOT EXISTS bank_user_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,12 +29,6 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   is_active BOOLEAN DEFAULT true,
   UNIQUE(user_account_id, account_number)
 );
--- Create indexes for bank_accounts
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_bank_type ON bank_accounts(bank_type);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_active ON bank_accounts(is_active);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_user_account_id ON bank_accounts(user_account_id);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts(account_number);
-
 
 -- Create transactions table
 CREATE TABLE IF NOT EXISTS transactions (
@@ -52,134 +50,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMP DEFAULT now()
 );
 
--- Create indexes for transactions
-CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
-CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
-
--- Enable Row Level Security (RLS) for all tables
-ALTER TABLE bank_user_accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE recurring ENABLE ROW LEVEL SECURITY;
-ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transaction_categories ENABLE ROW LEVEL SECURITY;
-
--- =============================================================================
--- RLS Policies for bank_user_accounts
--- =============================================================================
-CREATE POLICY "Allow public read access to user_accounts" ON bank_user_accounts
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to user_accounts" ON bank_user_accounts
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to user_accounts" ON bank_user_accounts
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to user_accounts" ON bank_user_accounts
-  FOR DELETE USING (true);
-
--- =============================================================================
--- RLS Policies for bank_accounts
--- =============================================================================
-CREATE POLICY "Allow public read access to accounts" ON bank_accounts
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to accounts" ON bank_accounts
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to accounts" ON bank_accounts
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to accounts" ON bank_accounts
-  FOR DELETE USING (true);
-
--- =============================================================================
--- RLS Policies for transactions
--- =============================================================================
-CREATE POLICY "Allow public read access to transactions" ON transactions
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to transactions" ON transactions
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to transactions" ON transactions
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to transactions" ON transactions
-  FOR DELETE USING (true);
-
--- =============================================================================
--- RLS Policies for categories
--- =============================================================================
-CREATE POLICY "Allow public read access to categories" ON categories
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to categories" ON categories
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to categories" ON categories
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to categories" ON categories
-  FOR DELETE USING (true);
-
--- =============================================================================
--- RLS Policies for recurring
--- =============================================================================
-CREATE POLICY "Allow public read access to recurring" ON recurring
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to recurring" ON recurring
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to recurring" ON recurring
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to recurring" ON recurring
-  FOR DELETE USING (true);
-
--- =============================================================================
--- RLS Policies for logs
--- =============================================================================
-CREATE POLICY "Allow public read access to logs" ON logs
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to logs" ON logs
-  FOR INSERT WITH CHECK (true);
-
--- =============================================================================
--- RLS Policies for notifications
--- =============================================================================
-CREATE POLICY "Allow public read access to notifications" ON notifications
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to notifications" ON notifications
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public update to notifications" ON notifications
-  FOR UPDATE USING (true) WITH CHECK (true);
-
--- =============================================================================
--- RLS Policies for transaction_categories
--- =============================================================================
-CREATE POLICY "Allow public read access to transaction_categories" ON transaction_categories
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow public insert to transaction_categories" ON transaction_categories
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow public delete to transaction_categories" ON transaction_categories
-  FOR DELETE USING (true);
-
-
--- =============================================================================
 -- Create categories table
--- =============================================================================
 CREATE TABLE IF NOT EXISTS categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
@@ -189,11 +60,7 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE(user_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
-
--- =============================================================================
 -- Create recurring table (for fixed costs and installments)
--- =============================================================================
 CREATE TABLE IF NOT EXISTS recurring (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
@@ -206,12 +73,7 @@ CREATE TABLE IF NOT EXISTS recurring (
   last_detected_at TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_recurring_account_id ON recurring(account_id);
-CREATE INDEX IF NOT EXISTS idx_recurring_is_confirmed ON recurring(is_confirmed);
-
--- =============================================================================
 -- Create logs table
--- =============================================================================
 CREATE TABLE IF NOT EXISTS logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender VARCHAR(100) NOT NULL, -- 'add-account', 'scrape', 'recurring-detector', etc.
@@ -222,13 +84,7 @@ CREATE TABLE IF NOT EXISTS logs (
   created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_logs_sender ON logs(sender);
-CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
-CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
-
--- =============================================================================
 -- Create notifications table
--- =============================================================================
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
@@ -238,18 +94,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
-
--- =============================================================================
--- Add hash column to transactions for deduplication
--- =============================================================================
-ALTER TABLE transactions ADD COLUMN IF NOT EXISTS hash VARCHAR(64) UNIQUE;
-CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
-
--- =============================================================================
 -- Create transaction categories junction table
--- =============================================================================
 CREATE TABLE IF NOT EXISTS transaction_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
@@ -258,11 +103,133 @@ CREATE TABLE IF NOT EXISTS transaction_categories (
   UNIQUE(transaction_id, category_id)
 );
 
+-- =============================================================================
+-- STEP 2: CREATE ALL INDEXES
+-- =============================================================================
+
+-- Indexes for bank_accounts
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_bank_type ON bank_accounts(bank_type);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_active ON bank_accounts(is_active);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_user_account_id ON bank_accounts(user_account_id);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts(account_number);
+
+-- Indexes for transactions
+CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
+
+-- Indexes for categories
+CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
+
+-- Indexes for recurring
+CREATE INDEX IF NOT EXISTS idx_recurring_account_id ON recurring(account_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_is_confirmed ON recurring(is_confirmed);
+
+-- Indexes for logs
+CREATE INDEX IF NOT EXISTS idx_logs_sender ON logs(sender);
+CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
+
+-- Indexes for notifications
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+-- Indexes for transaction_categories
 CREATE INDEX IF NOT EXISTS idx_transaction_categories_transaction_id ON transaction_categories(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_categories_category_id ON transaction_categories(category_id);
 
 -- =============================================================================
--- Optional: Create a view for transaction summary
+-- STEP 3: ENABLE ROW LEVEL SECURITY (RLS) ON ALL TABLES
+-- =============================================================================
+
+ALTER TABLE bank_user_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recurring ENABLE ROW LEVEL SECURITY;
+ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transaction_categories ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- STEP 4: CREATE RLS POLICIES
+-- =============================================================================
+
+-- Policies for bank_user_accounts
+CREATE POLICY "Allow public read access to user_accounts" ON bank_user_accounts
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to user_accounts" ON bank_user_accounts
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to user_accounts" ON bank_user_accounts
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public delete to user_accounts" ON bank_user_accounts
+  FOR DELETE USING (true);
+
+-- Policies for bank_accounts
+CREATE POLICY "Allow public read access to accounts" ON bank_accounts
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to accounts" ON bank_accounts
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to accounts" ON bank_accounts
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public delete to accounts" ON bank_accounts
+  FOR DELETE USING (true);
+
+-- Policies for transactions
+CREATE POLICY "Allow public read access to transactions" ON transactions
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to transactions" ON transactions
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to transactions" ON transactions
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public delete to transactions" ON transactions
+  FOR DELETE USING (true);
+
+-- Policies for categories
+CREATE POLICY "Allow public read access to categories" ON categories
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to categories" ON categories
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to categories" ON categories
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public delete to categories" ON categories
+  FOR DELETE USING (true);
+
+-- Policies for recurring
+CREATE POLICY "Allow public read access to recurring" ON recurring
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to recurring" ON recurring
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to recurring" ON recurring
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public delete to recurring" ON recurring
+  FOR DELETE USING (true);
+
+-- Policies for logs
+CREATE POLICY "Allow public read access to logs" ON logs
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to logs" ON logs
+  FOR INSERT WITH CHECK (true);
+
+-- Policies for notifications
+CREATE POLICY "Allow public read access to notifications" ON notifications
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to notifications" ON notifications
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to notifications" ON notifications
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Policies for transaction_categories
+CREATE POLICY "Allow public read access to transaction_categories" ON transaction_categories
+  FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to transaction_categories" ON transaction_categories
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public delete to transaction_categories" ON transaction_categories
+  FOR DELETE USING (true);
+
+-- =============================================================================
+-- STEP 5: CREATE VIEWS
 -- =============================================================================
 
 DROP VIEW IF EXISTS transaction_summary CASCADE;
@@ -281,7 +248,7 @@ WHERE ba.is_active = true
 GROUP BY ba.id, ba.bank_type, ba.last_updated;
 
 -- =============================================================================
--- Optional: Create a function to get account statistics
+-- STEP 6: CREATE FUNCTIONS
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION get_account_stats(account_id UUID)
@@ -307,5 +274,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
+-- =============================================================================
+-- DONE! All tables, indexes, RLS policies, views and functions created.
 -- =============================================================================
 
