@@ -79,6 +79,90 @@ CREATE POLICY "Allow public insert to transactions" ON transactions
 
 
 -- =============================================================================
+-- Create categories table
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  target_amount DECIMAL(12, 2),
+  created_at TIMESTAMP DEFAULT now(),
+  UNIQUE(user_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
+
+-- =============================================================================
+-- Create recurring table (for fixed costs and installments)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS recurring (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL, -- 'installment', 'direct_debit', 'detected'
+  amount_avg DECIMAL(12, 2) NOT NULL,
+  day_of_month INT,
+  description VARCHAR(500),
+  is_confirmed BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT now(),
+  last_detected_at TIMESTAMP DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_recurring_account_id ON recurring(account_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_is_confirmed ON recurring(is_confirmed);
+
+-- =============================================================================
+-- Create logs table
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender VARCHAR(100) NOT NULL, -- 'add-account', 'scrape', 'recurring-detector', etc.
+  level VARCHAR(20) NOT NULL, -- 'INFO', 'ERROR', 'WARNING', 'DEBUG'
+  title VARCHAR(255),
+  message TEXT NOT NULL,
+  details JSONB,
+  created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_logs_sender ON logs(sender);
+CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
+
+-- =============================================================================
+-- Create notifications table
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+-- =============================================================================
+-- Add hash column to transactions for deduplication
+-- =============================================================================
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS hash VARCHAR(64) UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
+
+-- =============================================================================
+-- Create transaction categories junction table
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS transaction_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT now(),
+  UNIQUE(transaction_id, category_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_categories_transaction_id ON transaction_categories(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_categories_category_id ON transaction_categories(category_id);
+
+-- =============================================================================
 -- Optional: Create a view for transaction summary
 -- =============================================================================
 
@@ -88,8 +172,8 @@ SELECT
   ba.id as account_id,
   ba.bank_type,
   COUNT(t.id) as transaction_count,
-  SUM(CASE WHEN t.type = 'credit' THEN t.amount ELSE 0 END) as total_credits,
-  SUM(CASE WHEN t.type = 'debit' THEN t.amount ELSE 0 END) as total_debits,
+  SUM(CASE WHEN t.type = 'credit' THEN t.charged_amount ELSE 0 END) as total_credits,
+  SUM(CASE WHEN t.type = 'debit' THEN t.charged_amount ELSE 0 END) as total_debits,
   MAX(t.date) as last_transaction_date,
   ba.last_updated
 FROM bank_accounts ba
@@ -114,9 +198,9 @@ BEGIN
   RETURN QUERY
   SELECT 
     COUNT(t.id),
-    SUM(CASE WHEN t.type = 'credit' THEN t.amount ELSE 0 END),
-    SUM(CASE WHEN t.type = 'debit' THEN t.amount ELSE 0 END),
-    AVG(ABS(t.amount)),
+    SUM(CASE WHEN t.type = 'credit' THEN t.charged_amount ELSE 0 END),
+    SUM(CASE WHEN t.type = 'debit' THEN t.charged_amount ELSE 0 END),
+    AVG(ABS(t.charged_amount)),
     MIN(t.date),
     MAX(t.date)
   FROM transactions t

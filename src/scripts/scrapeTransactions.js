@@ -2,7 +2,18 @@
 import { getAccountDetails , getAccountChildren} from "./listAccounts.js";
 import { scrape } from "./scraper.js";
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+import { createLogger } from '../utils/logger.js';
 
+const logger = createLogger('scrape-transactions');
+
+/**
+ * Generate hash for transaction deduplication
+ */
+function generateTransactionHash(tx, accountId) {
+  const hashInput = `${accountId}:${tx.date}:${tx.description}:${tx.chargedAmount || tx.originalAmount}`;
+  return crypto.createHash('sha256').update(hashInput).digest('hex');
+}
 
 async function main() {
 
@@ -81,20 +92,24 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
       console.log(`Mapped to bank_accounts ID: ${accountData.id}`);
       console.log(`Found ${acc.txns ? acc.txns.length : 0} transaction(s) for this account`);
       if (acc.txns ) {
-          tnxsList.push(...acc.txns.map(tx => ({
-          account_id: accountData.id,
-          identifier: tx.identifier || null,
-          date: tx.date,
-          processed_date: tx.processedDate || null,
-          original_amount: tx.originalAmount || 0,
-          original_currency: tx.originalCurrency || 'ILS',
-          charged_amount: tx.chargedAmount || 0,
-          description: tx.description || '',
-          memo: tx.memo || null,
-          type: tx.type || 'normal',
-          installment_number: tx.installments?.number || null,
-          installment_total: tx.installments?.total || null,
-        })));
+          tnxsList.push(...acc.txns.map(tx => {
+            const hash = generateTransactionHash(tx, accountData.id);
+            return {
+              account_id: accountData.id,
+              hash: hash,
+              identifier: tx.identifier || null,
+              date: tx.date,
+              processed_date: tx.processedDate || null,
+              original_amount: tx.originalAmount || 0,
+              original_currency: tx.originalCurrency || 'ILS',
+              charged_amount: tx.chargedAmount || 0,
+              description: tx.description || '',
+              memo: tx.memo || null,
+              type: tx.type || 'normal',
+              installment_number: tx.installments?.number || null,
+              installment_total: tx.installments?.total || null,
+            };
+          }));
       }
     }
 
@@ -103,37 +118,51 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
     console.log(`found ${tnxsList.length} transaction(s)`);
     
     
-    // Save transactions to database
+    // Save transactions to database (with deduplication by hash)
     console.log('Saving transactions to database...');
     
     if (tnxsList.length > 0) {
-      const {data , error} = await supabase
-        .from('transactions')
-        .insert(tnxsList)
-        .select();
-      if (error) {
-        if (error.code === '23505' || error.message.includes('duplicate')) {
-          console.log(`⚠ Some transactions already exist. Skipping duplicates.`);
+      let insertedCount = 0;
+      let skippedCount = 0;
+
+      for (const tx of tnxsList) {
+        const { error } = await supabase
+          .from('transactions')
+          .insert([tx]);
+        
+        if (error) {
+          if (error.code === '23505' || error.message.includes('duplicate')) {
+            skippedCount++;
+          } else {
+            logger.error('Failed to save transaction', { transaction: tx, error: error.message });
+            throw new Error(`Failed to save transactions: ${error.message}`);
+          }
         } else {
-          throw new Error(`Failed to save transactions: ${error.message}`);
+          insertedCount++;
         }
-      } else {
-        console.log(`✓ Transactions saved: ${data ? data.length : 0} transaction(s)`);
       }
+      
+      console.log(`✓ Transactions saved: ${insertedCount} new transaction(s), ${skippedCount} duplicate(s) skipped`);
+      logger.info('Transactions synchronized', { 
+        account_id: accountId,
+        inserted: insertedCount,
+        skipped: skippedCount,
+        total: tnxsList.length
+      });
     }
     console.log(`${tnxsList.length} transactions processed successfully` );
 
-    // Update last_scraped_at in bank_accounts
+    // Update last_updated in bank_accounts
     const { data: updateData, error: updateError } = await supabase
       .from('bank_accounts')
       .update({ last_updated: new Date().toISOString() })
       .eq('id', accountId);
 
     if (updateError) {
-      throw new Error(`Failed to update last_scraped_at: ${updateError.message}`);
+      throw new Error(`Failed to update last_updated: ${updateError.message}`);
       process.exit(1);
     }
-    console.log('✓ last_scraped_at updated successfully');
+    console.log('✓ last_updated timestamp updated successfully');
 
 
    
@@ -141,12 +170,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
   } catch (error) {
    
     console.error(`Scraping failed: ${error.message}`);
+    logger.error('Scraping failed', { account_id: accountId, error: error.message });
     process.exit(1);
   }
 }
 
 main().catch(error => {
   console.error('Unexpected error:', error);
+  logger.error('Unexpected error in scrapeTransactions', { error: error.message });
   process.exit(1);
 });
 

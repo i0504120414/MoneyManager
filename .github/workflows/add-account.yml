@@ -149,6 +149,7 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
           DEBUG: '*,-puppeteer:*'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
         run: |
           docker run --rm \
@@ -169,8 +170,47 @@ jobs:
             -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
             -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
             -e DEBUG='*,-puppeteer:*' \
+            -e GITHUB_TOKEN="$GITHUB_TOKEN" \
             ghcr.io/i0504120414/moneymanager:latest \
             src/scripts/addAccount.js
+      
+      - name: Save credentials to GitHub Secrets
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BANK_TYPE: ${{ github.event.inputs.bank_type }}
+          BANK_USERNAME: ${{ github.event.inputs.username }}
+          USER_CODE: ${{ github.event.inputs.userCode }}
+          ID: ${{ github.event.inputs.id }}
+          PASSWORD: ${{ github.event.inputs.password }}
+          NUM: ${{ github.event.inputs.num }}
+          CARD_6_DIGITS: ${{ github.event.inputs.card6Digits }}
+          NATIONAL_ID: ${{ github.event.inputs.nationalID }}
+          EMAIL: ${{ github.event.inputs.email }}
+          PHONE_NUMBER: ${{ github.event.inputs.phoneNumber }}
+          OTP_CODE: ${{ github.event.inputs.otpCodeRetriever }}
+          OTP_LONG_TERM_TOKEN: ${{ github.event.inputs.otpLongTermToken }}
+        run: |
+          # Create credentials JSON
+          CREDENTIALS_JSON=$(cat <<EOF
+          {
+            "bankType": "$BANK_TYPE",
+            "username": "$BANK_USERNAME",
+            "userCode": "$USER_CODE",
+            "id": "$ID",
+            "num": "$NUM",
+            "card6Digits": "$CARD_6_DIGITS",
+            "nationalID": "$NATIONAL_ID",
+            "email": "$EMAIL",
+            "phoneNumber": "$PHONE_NUMBER"
+          }
+          EOF
+          )
+          
+          # Create secret name based on bank type and timestamp
+          SECRET_NAME="ACC_${BANK_TYPE}_$(date +%s)"
+          echo "Credentials would be saved as: $SECRET_NAME"
+          echo "Note: Actual secret storage requires additional authentication setup"
       
       - name: Upload error screenshots
         if: always()
