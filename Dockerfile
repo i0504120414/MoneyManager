@@ -76,6 +76,7 @@ COPY database.sql ./.env.example ./
 
 # Note: .env is not included in the image. 
 # Environment variables are passed at runtime via -e flags or .env file mounted as volume
+# Last rebuild: Fix WAF rate limiting with sequential card processing
 RUN npm prune --omit=dev
 
 # Set proper ownership
