@@ -91,13 +91,13 @@ async function main() {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     console.log('Saving data to database...');
-    // Save user account (WITHOUT credentials - only metadata)
+    // Save user account WITH credentials (encrypted in Supabase)
     const { data, error } = await supabase
       .from('bank_user_accounts')
       .insert([
         {
           bank_type: bankType,
-          credentials: {}, // Don't store credentials in database - they go to GitHub Secrets
+          credentials: credentials, // Store credentials in database - Supabase encrypts at rest
         }
       ])
       .select();

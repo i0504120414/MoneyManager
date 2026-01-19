@@ -196,9 +196,6 @@ async function main() {
 
   console.log(`📋 Found ${userAccounts.length} user account(s) to sync\n`);
 
-  // Get credentials from environment
-  const credentials = getCredentialsFromEnv();
-  
   const results = {
     total: userAccounts.length,
     success: 0,
@@ -206,14 +203,20 @@ async function main() {
     details: []
   };
 
-  // For now, we can only sync accounts that match the provided credentials
-  // In a full implementation, credentials would be stored securely per account
-  const bankType = process.env.BANK_TYPE;
-  
+  // Sync each account using credentials stored in the database
   for (const userAccount of userAccounts) {
-    // Only sync if bank type matches (when BANK_TYPE is provided)
-    if (bankType && userAccount.bank_type !== bankType) {
-      console.log(`⏭️ Skipping account ${userAccount.id} (${userAccount.bank_type}) - bank type mismatch`);
+    // Get credentials from the database (stored in bank_user_accounts.credentials)
+    const credentials = userAccount.credentials;
+    
+    if (!credentials || Object.keys(credentials).length === 0) {
+      console.log(`⏭️ Skipping account ${userAccount.id} (${userAccount.bank_type}) - no credentials stored`);
+      results.failed++;
+      results.details.push({
+        accountId: userAccount.id,
+        bankType: userAccount.bank_type,
+        success: false,
+        error: 'No credentials stored'
+      });
       continue;
     }
 
