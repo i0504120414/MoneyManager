@@ -288,28 +288,67 @@ async function detectRecurringForAccount(supabase, accountId) {
  */
 async function main() {
   const accountId = process.env.ACCOUNT_ID;
-  
-  if (!accountId) {
-    console.error('ACCOUNT_ID environment variable is required');
-    logger.error('Missing ACCOUNT_ID');
-    process.exit(1);
-  }
-
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
   
   try {
-    const result = await detectRecurringForAccount(supabase, accountId);
-    
-    if (!result.success) {
-      console.error(`Failed to detect recurring transactions: ${result.error}`);
-      process.exit(1);
-    }
+    // If no specific account, run for all active accounts
+    if (!accountId) {
+      console.log('🔍 Running recurring detection for all accounts...');
+      
+      const { data: accounts, error } = await supabase
+        .from('accounts')
+        .select('id, bank_name')
+        .eq('status', 'active');
+      
+      if (error) {
+        console.error(`Failed to fetch accounts: ${error.message}`);
+        logger.error('Failed to fetch accounts', { error: error.message });
+        process.exit(1);
+      }
 
-    console.log('✓ Recurring transaction detection completed:');
-    console.log(`  - Installments: ${result.installments}`);
-    console.log(`  - Direct Debits: ${result.directDebits}`);
-    console.log(`  - Algorithmic: ${result.algorithmicDetected}`);
-    console.log(`  - Total: ${result.total}`);
+      if (!accounts || accounts.length === 0) {
+        console.log('No active accounts found');
+        process.exit(0);
+      }
+
+      console.log(`Found ${accounts.length} active account(s)`);
+      let totalResults = { installments: 0, directDebits: 0, algorithmicDetected: 0, total: 0 };
+
+      for (const account of accounts) {
+        console.log(`\nProcessing account: ${account.bank_name} (${account.id})`);
+        const result = await detectRecurringForAccount(supabase, account.id);
+        
+        if (result.success) {
+          totalResults.installments += result.installments;
+          totalResults.directDebits += result.directDebits;
+          totalResults.algorithmicDetected += result.algorithmicDetected;
+          totalResults.total += result.total;
+        } else {
+          console.error(`  ⚠️ Failed: ${result.error}`);
+        }
+      }
+
+      console.log('\n✓ Recurring transaction detection completed for all accounts:');
+      console.log(`  - Installments: ${totalResults.installments}`);
+      console.log(`  - Direct Debits: ${totalResults.directDebits}`);
+      console.log(`  - Algorithmic: ${totalResults.algorithmicDetected}`);
+      console.log(`  - Total: ${totalResults.total}`);
+      
+    } else {
+      // Run for specific account
+      const result = await detectRecurringForAccount(supabase, accountId);
+      
+      if (!result.success) {
+        console.error(`Failed to detect recurring transactions: ${result.error}`);
+        process.exit(1);
+      }
+
+      console.log('✓ Recurring transaction detection completed:');
+      console.log(`  - Installments: ${result.installments}`);
+      console.log(`  - Direct Debits: ${result.directDebits}`);
+      console.log(`  - Algorithmic: ${result.algorithmicDetected}`);
+      console.log(`  - Total: ${result.total}`);
+    }
   } catch (error) {
     console.error(`Unexpected error: ${error.message}`);
     logger.error('Unexpected error in detectRecurring', { error: error.message });
