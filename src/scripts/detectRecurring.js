@@ -301,6 +301,12 @@ async function main() {
         .eq('status', 'active');
       
       if (error) {
+        // Handle case where table doesn't exist yet
+        if (error.message.includes('schema cache') || error.message.includes('does not exist')) {
+          console.log('ℹ️ Database tables not set up yet. Please run database.sql in Supabase.');
+          console.log('   No accounts to process - exiting successfully.');
+          process.exit(0);
+        }
         console.error(`Failed to fetch accounts: ${error.message}`);
         logger.error('Failed to fetch accounts', { error: error.message });
         process.exit(1);
