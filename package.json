@@ -13,7 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "dotenv": "^17.2.3",
-    "israeli-bank-scrapers": "^6.3.7",
+    "israeli-bank-scrapers": "^6.6.1",
     "ky": "^1.14.1"
   },
   "devDependencies": {
