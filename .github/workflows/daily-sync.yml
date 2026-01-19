@@ -78,6 +78,40 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync all accounts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          BANK_TYPE: ${{ secrets.BANK_TYPE }}
+          USER_CODE: ${{ secrets.USER_CODE }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          BANK_USERNAME: ${{ secrets.BANK_USERNAME }}
+          ID: ${{ secrets.ID }}
+          NUM: ${{ secrets.NUM }}
+          CARD_6_DIGITS: ${{ secrets.CARD_6_DIGITS }}
+          NATIONAL_ID: ${{ secrets.NATIONAL_ID }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+          DEBUG: 'israeli-bank-scrapers:*'
+        run: |
+          docker run --rm \
+            -e SUPABASE_URL="$SUPABASE_URL" \
+            -e SUPABASE_KEY="$SUPABASE_KEY" \
+            -e BANK_TYPE="$BANK_TYPE" \
+            -e USER_CODE="$USER_CODE" \
+            -e PASSWORD="$PASSWORD" \
+            -e BANK_USERNAME="$BANK_USERNAME" \
+            -e ID="$ID" \
+            -e NUM="$NUM" \
+            -e CARD_6_DIGITS="$CARD_6_DIGITS" \
+            -e NATIONAL_ID="$NATIONAL_ID" \
+            -e PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+            -e PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+            -e DEBUG='israeli-bank-scrapers:*' \
+            -v "$(pwd)/sync-results.json:/app/sync-results.json" \
+            ghcr.io/i0504120414/moneymanager:latest \
+            src/scripts/syncAllAccounts.js
+
       - name: Detect recurring transactions
         if: always()
         env:

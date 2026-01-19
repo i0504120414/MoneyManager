@@ -36,6 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts(acc
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+  hash VARCHAR(64) UNIQUE,
   identifier INT,
   date TIMESTAMP NOT NULL,
   processed_date TIMESTAMP,
@@ -48,14 +49,14 @@ CREATE TABLE IF NOT EXISTS transactions (
   installment_number INT,
   installment_total INT,
   status VARCHAR(50),
-  created_at TIMESTAMP DEFAULT now(),
-  UNIQUE(account_id, identifier, date, original_amount)
+  created_at TIMESTAMP DEFAULT now()
 );
 
 -- Create indexes for transactions
 CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_hash ON transactions(hash);
 
 -- Enable Row Level Security (RLS) - adjust policies as needed
 ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
