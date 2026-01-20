@@ -6,7 +6,6 @@ import AccountCards from './AccountCards';
 import BalanceChart from './BalanceChart';
 import BudgetTable from './BudgetTable';
 import RecentTransactions from './RecentTransactions';
-import RecurringAlerts from './RecurringAlerts';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 export default function Dashboard() {
@@ -57,9 +56,6 @@ export default function Dashboard() {
   // Calculate total balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 
-  // Get pending recurring items
-  const pendingRecurring = recurring.filter(r => !r.is_confirmed);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -88,11 +84,6 @@ export default function Dashboard() {
           {accounts.length} חשבונות פעילים
         </p>
       </div>
-
-      {/* Pending Recurring Alerts */}
-      {pendingRecurring.length > 0 && (
-        <RecurringAlerts items={pendingRecurring} onRefresh={fetchData} />
-      )}
 
       {/* Account Cards */}
       <AccountCards accounts={accounts} />

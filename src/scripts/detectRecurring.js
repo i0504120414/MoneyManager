@@ -115,10 +115,11 @@ async function detectDirectDebits(supabase, accountId) {
         .single();
       
       if (!existing) {
+        // Keep the original sign: negative for expenses, positive for income
         recurringDebits.push({
           account_id: accountId,
           type: 'direct_debit',
-          amount_avg: Math.abs(tx.charged_amount),
+          amount_avg: tx.charged_amount, // Keep original sign (negative = expense)
           description: tx.description,
           is_confirmed: true, // Direct debits are more reliable
         });
@@ -169,14 +170,16 @@ async function detectAlgorithmicRecurring(supabase, accountId) {
   for (const [description, txs] of Object.entries(transactionsByDescription)) {
     if (txs.length < 3) continue; // Need at least 3 transactions
 
-    const amounts = txs.map(t => Math.abs(t.charged_amount));
-    const avgAmount = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+    // Use absolute values for consistency check, but preserve sign for storage
+    const amounts = txs.map(t => t.charged_amount);
+    const absAmounts = amounts.map(a => Math.abs(a));
+    const avgAbsAmount = absAmounts.reduce((a, b) => a + b, 0) / absAmounts.length;
     const amountStdDev = Math.sqrt(
-      amounts.reduce((sum, val) => sum + Math.pow(val - avgAmount, 2), 0) / amounts.length
+      absAmounts.reduce((sum, val) => sum + Math.pow(val - avgAbsAmount, 2), 0) / absAmounts.length
     );
 
     // Check if amounts are consistent (within 10%)
-    const isConsistent = amountStdDev / avgAmount < 0.1;
+    const isConsistent = amountStdDev / avgAbsAmount < 0.1;
     
     if (isConsistent) {
       // Check if transactions are roughly monthly
@@ -205,17 +208,20 @@ async function detectAlgorithmicRecurring(supabase, accountId) {
           .single();
         
         if (!existing) {
+          // Calculate actual average (with sign) - negative means expense
+          const realAvg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+          
           recurringCandidates.push({
             account_id: accountId,
             type: 'detected',
-            amount_avg: avgAmount,
+            amount_avg: realAvg, // Keep original sign (negative = expense)
             description: description,
             is_confirmed: false, // Needs user confirmation
           });
           logger.info('Detected recurring transaction pattern', {
             account_id: accountId,
             description: description,
-            amount: avgAmount,
+            amount: realAvg,
             count: txs.length
           });
         }
@@ -246,7 +252,41 @@ async function saveRecurringTransactions(supabase, recurringList) {
 
   console.log(`✓ Saved ${recurringList.length} recurring transaction(s)`);
   logger.info('Recurring transactions saved', { count: recurringList.length });
+  
+  // Create notifications for new pending recurring items
+  const pendingItems = recurringList.filter(r => !r.is_confirmed);
+  if (pendingItems.length > 0) {
+    await createNotifications(supabase, pendingItems);
+  }
+  
   return recurringList.length;
+}
+
+/**
+ * Create notifications for new pending recurring transactions
+ */
+async function createNotifications(supabase, pendingItems) {
+  try {
+    const notifications = pendingItems.map(item => ({
+      user_id: '00000000-0000-0000-0000-000000000000', // System user ID
+      title: 'תשלום קבוע חדש לאישור',
+      message: `זוהה תשלום קבוע חדש: ${item.description} בסכום של ₪${Math.abs(item.amount_avg).toLocaleString('he-IL', { minimumFractionDigits: 2 })}`,
+      is_read: false,
+    }));
+
+    const { error } = await supabase
+      .from('notifications')
+      .insert(notifications);
+    
+    if (error) {
+      logger.error('Failed to create notifications', { error: error.message });
+    } else {
+      logger.info('Notifications created for pending recurring items', { count: pendingItems.length });
+      console.log(`✓ Created ${pendingItems.length} notification(s) for pending recurring items`);
+    }
+  } catch (error) {
+    logger.error('Error creating notifications', { error: error.message });
+  }
 }
 
 /**
