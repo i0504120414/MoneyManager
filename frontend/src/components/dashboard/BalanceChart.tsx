@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Recurring } from '@/lib/supabase';
+import { useMemo, useEffect, useState } from 'react';
+import { Recurring, Account, api, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import {
   LineChart,
   Line,
@@ -20,24 +20,78 @@ import { he } from 'date-fns/locale';
 interface BalanceChartProps {
   currentBalance: number;
   recurring: Recurring[];
+  accounts: Account[];
 }
 
-export default function BalanceChart({ currentBalance, recurring }: BalanceChartProps) {
+// Default credit card charge day (usually 1st or 10th)
+const DEFAULT_CHARGE_DAY = 10;
+
+export default function BalanceChart({ currentBalance, recurring, accounts }: BalanceChartProps) {
+  const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
+
+  // Fetch credit card charges
+  useEffect(() => {
+    const fetchCharges = async () => {
+      const charges: Record<string, number> = {};
+      const creditCards = accounts.filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type));
+      
+      for (const card of creditCards) {
+        try {
+          const charge = await api.getCreditCardUpcomingCharges(card.id);
+          charges[card.id] = charge;
+        } catch (error) {
+          console.error('Error fetching credit card charge:', error);
+        }
+      }
+      setCreditCardCharges(charges);
+    };
+
+    if (accounts.length > 0) {
+      fetchCharges();
+    }
+  }, [accounts]);
+
   const chartData = useMemo(() => {
     const today = startOfDay(new Date());
     const endDate = addDays(today, 30);
     const days = eachDayOfInterval({ start: today, end: endDate });
 
-    let runningBalance = currentBalance;
+    // Calculate total credit card charges
+    const totalCreditCardCharge = Object.values(creditCardCharges).reduce((sum, charge) => sum + charge, 0);
+
+    // Get bank accounts (not credit cards) balance
+    const bankAccounts = accounts.filter(acc => !CREDIT_CARD_TYPES.includes(acc.bank_type));
+    let runningBalance = bankAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+
+    // Filter recurring that might be duplicates from credit card transactions
+    // Credit card purchases are already included in the credit card charge
+    // So we only count recurring from bank accounts (direct debits, standing orders)
+    const creditCardAccountIds = accounts
+      .filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type))
+      .map(acc => acc.id);
     
+    const filteredRecurring = recurring.filter(r => 
+      !creditCardAccountIds.includes(r.account_id)
+    );
+
     return days.map((day) => {
       const dayOfMonth = day.getDate();
       
-      // Check for recurring transactions on this day
-      recurring.forEach((item) => {
+      // Add credit card charge on the charge day
+      if (dayOfMonth === DEFAULT_CHARGE_DAY && totalCreditCardCharge > 0) {
+        runningBalance -= totalCreditCardCharge;
+      }
+      
+      // Check for recurring transactions on this day (only from bank accounts)
+      filteredRecurring.forEach((item) => {
         if (item.day_of_month === dayOfMonth) {
-          // Negative for expenses
-          runningBalance -= Math.abs(item.amount_avg || 0);
+          // Use the actual sign - negative means expense
+          const amount = item.amount_avg || 0;
+          if (amount < 0) {
+            runningBalance += amount; // amount is already negative
+          } else {
+            runningBalance += amount; // income
+          }
         }
       });
 
@@ -48,7 +102,7 @@ export default function BalanceChart({ currentBalance, recurring }: BalanceChart
         isToday: day.getTime() === today.getTime(),
       };
     });
-  }, [currentBalance, recurring]);
+  }, [currentBalance, recurring, accounts, creditCardCharges]);
 
   const minBalance = Math.min(...chartData.map((d) => d.balance));
   const maxBalance = Math.max(...chartData.map((d) => d.balance));
@@ -72,7 +126,10 @@ export default function BalanceChart({ currentBalance, recurring }: BalanceChart
     return null;
   };
 
-  if (recurring.length === 0) {
+  // Show chart if there are accounts or recurring items
+  const hasData = accounts.length > 0 || recurring.length > 0;
+  
+  if (!hasData) {
     return (
       <div className="h-64 flex items-center justify-center text-slate-400">
         <p>אין מספיק נתונים להצגת תחזית</p>

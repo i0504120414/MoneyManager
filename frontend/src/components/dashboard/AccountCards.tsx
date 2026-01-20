@@ -156,147 +156,115 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Bank Accounts - Large Cards */}
-      {bankAccounts.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {bankAccounts.map((account) => {
-            const style = bankStyles[account.bank_type] || bankStyles.default;
-            const balance = account.balance || 0;
-            const isPositive = balance >= 0;
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Bank Accounts */}
+      {bankAccounts.map((account) => {
+        const style = bankStyles[account.bank_type] || bankStyles.default;
+        const balance = account.balance || 0;
+        const isPositive = balance >= 0;
 
-            return (
-              <div
-                key={account.id}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 card-hover"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-14 h-14 rounded-xl ${style.bg} flex items-center justify-center overflow-hidden`}>
-                    {style.logo ? (
-                      <img 
-                        src={style.logo} 
-                        alt={style.name}
-                        className="w-10 h-10 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <Building2 className={`w-7 h-7 ${style.text} ${style.logo ? 'hidden' : ''}`} />
-                  </div>
-                  {account.status === 'error' && (
-                    <div className="flex items-center gap-1 text-red-500 text-xs">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>שגיאה</span>
-                    </div>
-                  )}
+        return (
+          <div
+            key={account.id}
+            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 card-hover"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-12 h-12 rounded-xl ${style.bg} flex items-center justify-center overflow-hidden`}>
+                {style.logo ? (
+                  <img 
+                    src={style.logo} 
+                    alt={style.name}
+                    className="w-8 h-8 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <Building2 className={`w-6 h-6 ${style.text} ${style.logo ? 'hidden' : ''}`} />
+              </div>
+              {account.status === 'error' && (
+                <div className="flex items-center gap-1 text-red-500 text-xs">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>שגיאה</span>
                 </div>
+              )}
+            </div>
 
-                <h3 className="text-lg font-semibold text-slate-800">{style.name}</h3>
-                {account.account_number && (
-                  <p className="text-sm text-slate-500">חשבון: {account.account_number}</p>
-                )}
+            <h3 className="font-semibold text-slate-800">{style.name}</h3>
+            {account.account_number && (
+              <p className="text-xs text-slate-500">חשבון: {account.account_number}</p>
+            )}
 
-                <div className="mt-5 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">יתרה נוכחית</p>
-                    <p
-                      className={`text-3xl font-bold ltr-number ${
-                        isPositive ? 'text-slate-800' : 'text-red-600'
-                      }`}
-                    >
-                      ₪{balance.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-xl ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
-                    {isPositive ? (
-                      <TrendingUp className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <TrendingDown className="w-6 h-6 text-red-600" />
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-400 mt-4">
-                  עודכן: {new Date(account.last_updated).toLocaleDateString('he-IL')}
+            <div className="mt-3 flex items-end justify-between">
+              <div>
+                <p className="text-xs text-slate-400">יתרה</p>
+                <p
+                  className={`text-xl font-bold ltr-number ${
+                    isPositive ? 'text-slate-800' : 'text-red-600'
+                  }`}
+                >
+                  ₪{balance.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Credit Cards - List inside one card */}
-      {creditCardAccounts.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          {/* Header */}
-          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-800">כרטיסי אשראי</h3>
-                <p className="text-sm text-slate-500">{creditCardAccounts.length} כרטיסים</p>
+              <div className={`p-2 rounded-lg ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+                {isPositive ? (
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                ) : (
+                  <TrendingDown className="w-5 h-5 text-red-600" />
+                )}
               </div>
             </div>
-            <div className="text-left">
-              <p className="text-xs text-slate-400">סה"כ חיוב קרוב</p>
-              <p className="text-xl font-bold text-red-600 ltr-number">
-                ₪{totalCreditCardCharges.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
-              </p>
+          </div>
+        );
+      })}
+
+      {/* Credit Cards - Single Card with all cards inside */}
+      {creditCardAccounts.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+          <div className="flex items-start justify-between mb-3">
+            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+              <CreditCard className="w-6 h-6 text-purple-600" />
             </div>
           </div>
 
-          {/* Credit Cards List */}
-          <div className="divide-y divide-slate-100">
-            {creditCardAccounts.map((account) => {
+          <h3 className="font-semibold text-slate-800">כרטיסי אשראי</h3>
+          <p className="text-xs text-slate-500">{creditCardAccounts.length} כרטיסים</p>
+
+          <div className="mt-3">
+            <p className="text-xs text-slate-400">סה"כ חיוב קרוב</p>
+            <p className="text-xl font-bold text-red-600 ltr-number">
+              ₪{totalCreditCardCharges.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+
+          {/* Mini list of cards */}
+          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+            {creditCardAccounts.slice(0, 3).map((account) => {
               const style = bankStyles[account.bank_type] || bankStyles.default;
               const charge = creditCardCharges[account.id] || 0;
 
               return (
-                <div
-                  key={account.id}
-                  className="p-4 hover:bg-slate-50 transition flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg ${style.bg} flex items-center justify-center overflow-hidden`}>
+                <div key={account.id} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded ${style.bg} flex items-center justify-center overflow-hidden`}>
                       {style.logo ? (
-                        <img 
-                          src={style.logo} 
-                          alt={style.name}
-                          className="w-7 h-7 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <CreditCard className={`w-5 h-5 ${style.text} ${style.logo ? 'hidden' : ''}`} />
+                        <img src={style.logo} alt={style.name} className="w-4 h-4 object-contain" />
+                      ) : (
+                        <CreditCard className={`w-3 h-3 ${style.text}`} />
+                      )}
                     </div>
-                    <div>
-                      <h4 className="font-medium text-slate-800">{style.name}</h4>
-                      <p className="text-xs text-slate-400">
-                        {account.account_number ? `**** ${account.account_number.slice(-4)}` : 'כרטיס אשראי'}
-                      </p>
-                    </div>
+                    <span className="text-slate-600 truncate max-w-[80px]">{style.name}</span>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-left">
-                      <p className="text-xs text-slate-400">חיוב קרוב</p>
-                      <p className="text-lg font-semibold text-red-600 ltr-number">
-                        ₪{charge.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    {account.status === 'error' && (
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    )}
-                  </div>
+                  <span className="text-red-600 font-medium ltr-number">
+                    ₪{charge.toLocaleString('he-IL')}
+                  </span>
                 </div>
               );
             })}
+            {creditCardAccounts.length > 3 && (
+              <p className="text-xs text-slate-400 text-center">+{creditCardAccounts.length - 3} נוספים</p>
+            )}
           </div>
         </div>
       )}

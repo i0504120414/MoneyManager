@@ -55,6 +55,9 @@ export default function Dashboard() {
 
   // Calculate total balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+  
+  // Filter accounts: only active (not error, not cancelled) accounts
+  const activeAccounts = accounts.filter(acc => acc.status !== 'error' && !acc.is_cancelled);
 
   return (
     <div className="space-y-6">
@@ -74,19 +77,8 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Total Balance Card */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
-        <p className="text-blue-100 text-sm">סה"כ יתרה</p>
-        <p className="text-4xl font-bold mt-1 ltr-number">
-          ₪{totalBalance.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
-        </p>
-        <p className="text-blue-200 text-sm mt-2">
-          {accounts.length} חשבונות פעילים
-        </p>
-      </div>
-
       {/* Account Cards */}
-      <AccountCards accounts={accounts} />
+      <AccountCards accounts={activeAccounts} />
 
       {/* Balance Timeline Chart */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -94,6 +86,7 @@ export default function Dashboard() {
         <BalanceChart
           currentBalance={totalBalance}
           recurring={recurring.filter(r => r.is_confirmed)}
+          accounts={activeAccounts}
         />
       </div>
 
