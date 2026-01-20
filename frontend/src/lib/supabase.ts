@@ -320,21 +320,14 @@ export const api = {
       .neq('id', '00000000-0000-0000-0000-000000000000');
     if (catError) throw catError;
 
-    // 5. Delete assignment_rules
-    const { error: rulesError } = await supabase
-      .from('assignment_rules')
+    // 5. Delete notifications
+    const { error: notifError } = await supabase
+      .from('notifications')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000');
-    if (rulesError) throw rulesError;
+    if (notifError) throw notifError;
 
-    // 6. Delete logs
-    const { error: logsError } = await supabase
-      .from('logs')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
-    if (logsError) throw logsError;
-
-    // 7. Reset last_updated in bank_user_accounts to trigger full re-sync
+    // 6. Reset last_updated in bank_user_accounts to trigger full re-sync
     const { error: updateError } = await supabase
       .from('bank_user_accounts')
       .update({ last_updated: null })
