@@ -6,8 +6,6 @@ import { useRouter } from 'next/navigation';
 import { api, Account, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import {
   triggerWorkflow,
-  getWorkflowRuns,
-  WorkflowRun,
   BANKS,
   FIELD_LABELS,
 } from '@/lib/github';
@@ -20,17 +18,17 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  ExternalLink,
   Plus,
   Play,
   X,
   Eye,
   EyeOff,
-  Receipt,
   Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
+
+type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 export default function AccountsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -38,9 +36,9 @@ export default function AccountsPage() {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
-  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [syncMessage, setSyncMessage] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [githubToken, setGithubToken] = useState('');
@@ -89,13 +87,6 @@ export default function AccountsPage() {
         }
       }
       setCreditCardCharges(charges);
-
-      // Fetch workflow runs if token exists
-      const token = await api.getGithubToken();
-      if (token) {
-        const runs = await getWorkflowRuns(token);
-        setWorkflowRuns(runs);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -106,8 +97,8 @@ export default function AccountsPage() {
   useEffect(() => {
     if (user) {
       fetchData();
-      // Refresh every 30 seconds to update workflow status
-      const interval = setInterval(fetchData, 30000);
+      // Refresh every 60 seconds
+      const interval = setInterval(fetchData, 60000);
       return () => clearInterval(interval);
     }
   }, [user, fetchData]);
@@ -119,16 +110,26 @@ export default function AccountsPage() {
       return;
     }
 
-    setSyncing(true);
+    setSyncStatus('syncing');
+    setSyncMessage('');
     const result = await triggerWorkflow('daily-sync.yml', { sync_mode: 'update' }, token);
     
     if (result.success) {
+      setSyncStatus('success');
+      setSyncMessage('הסנכרון הופעל בהצלחה');
+      setTimeout(() => {
+        setSyncStatus('idle');
+        setSyncMessage('');
+      }, 5000);
       setTimeout(fetchData, 3000);
     } else {
-      alert('שגיאה: ' + result.error);
+      setSyncStatus('error');
+      setSyncMessage('שגיאה בהפעלת הסנכרון');
+      setTimeout(() => {
+        setSyncStatus('idle');
+        setSyncMessage('');
+      }, 5000);
     }
-    
-    setSyncing(false);
   };
 
   const handleSaveToken = async () => {
@@ -244,15 +245,23 @@ export default function AccountsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSync}
-                disabled={syncing || !hasToken}
+                disabled={syncStatus === 'syncing' || !hasToken}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
-                {syncing ? (
+                {syncStatus === 'syncing' ? (
                   <Loader2 className="w-4 h-4 spinner" />
+                ) : syncStatus === 'success' ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : syncStatus === 'error' ? (
+                  <AlertCircle className="w-4 h-4" />
                 ) : (
                   <Play className="w-4 h-4" />
                 )}
-                <span>סנכרון</span>
+                <span>
+                  {syncStatus === 'syncing' ? 'מסנכרן...' : 
+                   syncStatus === 'success' ? 'הופעל!' :
+                   syncStatus === 'error' ? 'נכשל' : 'סנכרון'}
+                </span>
               </button>
               <button
                 onClick={() => {
@@ -298,41 +307,34 @@ export default function AccountsPage() {
                 <p className="text-sm text-amber-700 font-medium">הוספת חשבונות</p>
                 <p className="text-sm text-amber-600 mt-1">
                   {!hasToken 
-                    ? 'כדי להוסיף חשבון, לחץ על ⚙️ והזן GitHub Token עם הרשאות workflow.'
+                    ? 'כדי להוסיף חשבון, הגדר GitHub Token בעמוד ההגדרות.'
                     : 'לחץ על "הוסף חשבון" לחיבור חשבון בנק או כרטיס אשראי חדש.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Activity Indicator */}
-          {workflowRuns.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-800">פעילות אחרונה</h2>
-              </div>
-              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                {workflowRuns.map((run) => (
-                  <div key={run.id} className="p-3 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        run.status === 'completed' 
-                          ? run.conclusion === 'success' ? 'bg-green-500' : 'bg-red-500'
-                          : run.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' : 'bg-slate-300'
-                      }`} />
-                      <span className="text-slate-700">{run.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-400">
-                      <span>
-                        {run.status === 'completed' 
-                          ? run.conclusion === 'success' ? '✓ הצליח' : '✗ נכשל'
-                          : run.status === 'in_progress' ? 'פועל...' : 'ממתין'}
-                      </span>
-                      <span>{formatDistanceToNow(new Date(run.created_at), { addSuffix: true, locale: he })}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* Sync Status Message */}
+          {syncMessage && (
+            <div className={`rounded-xl p-4 flex items-center gap-3 ${
+              syncStatus === 'success' ? 'bg-green-50 border border-green-200' :
+              syncStatus === 'error' ? 'bg-red-50 border border-red-200' :
+              'bg-blue-50 border border-blue-200'
+            }`}>
+              {syncStatus === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : syncStatus === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              ) : (
+                <Loader2 className="w-5 h-5 text-blue-600 spinner" />
+              )}
+              <span className={`text-sm font-medium ${
+                syncStatus === 'success' ? 'text-green-700' :
+                syncStatus === 'error' ? 'text-red-700' :
+                'text-blue-700'
+              }`}>
+                {syncMessage}
+              </span>
             </div>
           )}
 

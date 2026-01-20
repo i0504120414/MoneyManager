@@ -379,4 +379,15 @@ export const api = {
       }, { onConflict: 'key' });
     if (error) throw error;
   },
+
+  // Get logs from database
+  async getLogs() {
+    const { data, error } = await supabase
+      .from('logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return data;
+  },
 };

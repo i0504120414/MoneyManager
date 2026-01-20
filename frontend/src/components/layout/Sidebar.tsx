@@ -17,6 +17,7 @@ import {
   X,
   CreditCard,
   GitBranch,
+  FileText,
 } from 'lucide-react';
 
 const menuItems = [
@@ -26,6 +27,7 @@ const menuItems = [
   { href: '/budget', icon: PieChart, label: 'תקציב' },
   { href: '/recurring', icon: RefreshCw, label: 'תשלומים קבועים', hasBadge: true },
   { href: '/rules', icon: GitBranch, label: 'חוקי שיוך' },
+  { href: '/logs', icon: FileText, label: 'לוג' },
   { href: '/settings', icon: Settings, label: 'הגדרות' },
 ];
 
