@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
   X,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -40,6 +41,8 @@ export default function SettingsPage() {
   const [githubToken, setGithubToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [tokenSaved, setTokenSaved] = useState(false);
+  const [editingToken, setEditingToken] = useState(false);
+  const [newToken, setNewToken] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -226,52 +229,118 @@ export default function SettingsPage() {
           {/* GitHub Token Section */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <Github className="w-5 h-5 text-slate-600" />
-                <h2 className="text-lg font-semibold text-slate-800">GitHub Token</h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Github className="w-5 h-5 text-slate-600" />
+                  <h2 className="text-lg font-semibold text-slate-800">GitHub Token</h2>
+                </div>
+                {githubToken ? (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <Check className="w-3.5 h-3.5" />
+                    מוגדר
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    לא מוגדר
+                  </span>
+                )}
               </div>
             </div>
             <div className="p-6 space-y-4">
               <p className="text-sm text-slate-500">
                 הזן את ה-Personal Access Token מ-GitHub לצורך הפעלת סנכרון ידני והוספת חשבונות.
               </p>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Personal Access Token</label>
-                <div className="relative">
-                  <input
-                    type={showToken ? 'text' : 'password'}
-                    value={githubToken}
-                    onChange={(e) => setGithubToken(e.target.value)}
-                    className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="ghp_xxxxxxxxxxxx"
-                    dir="ltr"
-                  />
+              
+              {/* Token exists and not editing - show masked token with replace button */}
+              {githubToken && !editingToken ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-500 mb-1">Token שמור</p>
+                      <p className="font-mono text-sm text-slate-700" dir="ltr">
+                        {githubToken.substring(0, 7)}{'•'.repeat(20)}
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    onClick={() => {
+                      setEditingToken(true);
+                      setNewToken('');
+                    }}
+                    className="w-full py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition flex items-center justify-center gap-2"
                   >
-                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <RefreshCw className="w-4 h-4" />
+                    <span>החלף Token</span>
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  צור Token ב-GitHub Settings → Developer settings → Personal access tokens
-                  עם הרשאות: repo, workflow
-                </p>
-              </div>
-              <button
-                onClick={handleSaveToken}
-                className="w-full py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition flex items-center justify-center gap-2"
-              >
-                {tokenSaved ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>נשמר!</span>
-                  </>
-                ) : (
-                  <span>שמור Token</span>
-                )}
-              </button>
+              ) : (
+                /* No token or editing - show input field */
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Personal Access Token</label>
+                    <div className="relative">
+                      <input
+                        type={showToken ? 'text' : 'password'}
+                        value={editingToken ? newToken : githubToken}
+                        onChange={(e) => editingToken ? setNewToken(e.target.value) : setGithubToken(e.target.value)}
+                        className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="ghp_xxxxxxxxxxxx"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowToken(!showToken)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        title={showToken ? 'הסתר' : 'הצג'}
+                      >
+                        {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      צור Token ב-GitHub Settings → Developer settings → Personal access tokens
+                      עם הרשאות: repo, workflow
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {editingToken && (
+                      <button
+                        onClick={() => {
+                          setEditingToken(false);
+                          setNewToken('');
+                        }}
+                        className="flex-1 py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition"
+                      >
+                        ביטול
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const tokenToSave = editingToken ? newToken : githubToken;
+                        if (tokenToSave.trim()) {
+                          localStorage.setItem('github_token', tokenToSave.trim());
+                          setGithubToken(tokenToSave.trim());
+                        }
+                        setEditingToken(false);
+                        setNewToken('');
+                        setTokenSaved(true);
+                        setTimeout(() => setTokenSaved(false), 2000);
+                      }}
+                      disabled={editingToken ? !newToken.trim() : !githubToken.trim()}
+                      className="flex-1 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {tokenSaved ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>נשמר!</span>
+                        </>
+                      ) : (
+                        <span>שמור Token</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
