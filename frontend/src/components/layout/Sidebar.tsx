@@ -34,21 +34,26 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchCounts = async () => {
       try {
-        const count = await api.getPendingRecurringCount();
-        setPendingRecurringCount(count);
+        const [recurringCount, notifications] = await Promise.all([
+          api.getPendingRecurringCount(),
+          api.getNotifications()
+        ]);
+        setPendingRecurringCount(recurringCount);
+        setUnreadNotificationsCount(notifications?.filter(n => !n.is_read).length || 0);
       } catch (error) {
-        console.error('Error fetching pending recurring count:', error);
+        console.error('Error fetching counts:', error);
       }
     };
 
     if (user) {
-      fetchPendingCount();
+      fetchCounts();
       // Refresh every 60 seconds
-      const interval = setInterval(fetchPendingCount, 60000);
+      const interval = setInterval(fetchCounts, 60000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -137,7 +142,11 @@ export default function Sidebar() {
             >
               <div className="relative">
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full pulse-notification" />
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                )}
               </div>
               <span className="font-medium">התראות</span>
             </Link>
