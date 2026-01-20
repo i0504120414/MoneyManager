@@ -1,7 +1,8 @@
 {
+  "/accounts/page": "app/accounts/page.js",
   "/recurring/page": "app/recurring/page.js",
   "/transactions/page": "app/transactions/page.js",
+  "/settings/page": "app/settings/page.js",
   "/page": "app/page.js",
-  "/rules/page": "app/rules/page.js",
-  "/settings/page": "app/settings/page.js"
+  "/rules/page": "app/rules/page.js"
 }
