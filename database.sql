@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS bank_user_accounts (
   bank_type VARCHAR(50) NOT NULL,
   credentials JSONB NOT NULL,
   created_at TIMESTAMP DEFAULT now(),
-  last_updated TIMESTAMP DEFAULT now(),
+  last_updated TIMESTAMP DEFAULT NULL,
   UNIQUE(bank_type, credentials)
 );
 
