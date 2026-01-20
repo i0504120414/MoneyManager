@@ -2,27 +2,113 @@
 
 import { useEffect, useState } from 'react';
 import { Account, api, CREDIT_CARD_TYPES } from '@/lib/supabase';
-import { CreditCard, Building2, TrendingUp, TrendingDown, AlertCircle, Receipt, ChevronLeft } from 'lucide-react';
-import Link from 'next/link';
+import { CreditCard, Building2, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
-// Bank logos/colors mapping
-const bankStyles: Record<string, { bg: string; text: string; name: string }> = {
-  hapoalim: { bg: 'bg-red-500', text: 'text-white', name: 'הפועלים' },
-  leumi: { bg: 'bg-green-600', text: 'text-white', name: 'לאומי' },
-  discount: { bg: 'bg-orange-500', text: 'text-white', name: 'דיסקונט' },
-  mizrahi: { bg: 'bg-blue-600', text: 'text-white', name: 'מזרחי-טפחות' },
-  beinleumi: { bg: 'bg-purple-600', text: 'text-white', name: 'הבינלאומי' },
-  otsarHahayal: { bg: 'bg-teal-600', text: 'text-white', name: 'אוצר החייל' },
-  mercantile: { bg: 'bg-cyan-600', text: 'text-white', name: 'מרכנתיל' },
-  yahav: { bg: 'bg-amber-600', text: 'text-white', name: 'יהב' },
-  massad: { bg: 'bg-indigo-600', text: 'text-white', name: 'מסד' },
-  union: { bg: 'bg-slate-700', text: 'text-white', name: 'איגוד' },
-  isracard: { bg: 'bg-blue-800', text: 'text-white', name: 'ישראכרט' },
-  amex: { bg: 'bg-blue-900', text: 'text-white', name: 'אמריקן אקספרס' },
-  max: { bg: 'bg-rose-600', text: 'text-white', name: 'מקס' },
-  visaCal: { bg: 'bg-yellow-500', text: 'text-slate-800', name: 'ויזה כאל' },
-  default: { bg: 'bg-slate-500', text: 'text-white', name: 'חשבון' },
+// Bank logos/colors mapping with logo URLs (using Clearbit Logo API)
+const bankStyles: Record<string, { bg: string; text: string; name: string; logo?: string }> = {
+  hapoalim: { 
+    bg: 'bg-red-50', 
+    text: 'text-red-600', 
+    name: 'הפועלים',
+    logo: 'https://logo.clearbit.com/bankhapoalim.co.il'
+  },
+  leumi: { 
+    bg: 'bg-green-50', 
+    text: 'text-green-600', 
+    name: 'לאומי',
+    logo: 'https://logo.clearbit.com/leumi.co.il'
+  },
+  discount: { 
+    bg: 'bg-orange-50', 
+    text: 'text-orange-600', 
+    name: 'דיסקונט',
+    logo: 'https://logo.clearbit.com/discountbank.co.il'
+  },
+  mizrahi: { 
+    bg: 'bg-blue-50', 
+    text: 'text-blue-600', 
+    name: 'מזרחי-טפחות',
+    logo: 'https://logo.clearbit.com/mizrahi-tefahot.co.il'
+  },
+  beinleumi: { 
+    bg: 'bg-purple-50', 
+    text: 'text-purple-600', 
+    name: 'הבינלאומי',
+    logo: 'https://logo.clearbit.com/fibi.co.il'
+  },
+  otsarHahayal: { 
+    bg: 'bg-teal-50', 
+    text: 'text-teal-600', 
+    name: 'אוצר החייל',
+    logo: 'https://logo.clearbit.com/bankotsar.co.il'
+  },
+  mercantile: { 
+    bg: 'bg-cyan-50', 
+    text: 'text-cyan-600', 
+    name: 'מרכנתיל',
+    logo: 'https://logo.clearbit.com/mercantile.co.il'
+  },
+  yahav: { 
+    bg: 'bg-amber-50', 
+    text: 'text-amber-600', 
+    name: 'יהב',
+    logo: 'https://logo.clearbit.com/bank-yahav.co.il'
+  },
+  massad: { 
+    bg: 'bg-indigo-50', 
+    text: 'text-indigo-600', 
+    name: 'מסד',
+    logo: 'https://logo.clearbit.com/bankmassad.co.il'
+  },
+  union: { 
+    bg: 'bg-slate-100', 
+    text: 'text-slate-600', 
+    name: 'איגוד',
+    logo: 'https://logo.clearbit.com/unionbank.co.il'
+  },
+  isracard: { 
+    bg: 'bg-blue-50', 
+    text: 'text-blue-800', 
+    name: 'ישראכרט',
+    logo: 'https://logo.clearbit.com/isracard.co.il'
+  },
+  amex: { 
+    bg: 'bg-blue-50', 
+    text: 'text-blue-900', 
+    name: 'אמריקן אקספרס',
+    logo: 'https://logo.clearbit.com/americanexpress.com'
+  },
+  max: { 
+    bg: 'bg-rose-50', 
+    text: 'text-rose-600', 
+    name: 'מקס',
+    logo: 'https://logo.clearbit.com/max.co.il'
+  },
+  visaCal: { 
+    bg: 'bg-yellow-50', 
+    text: 'text-yellow-600', 
+    name: 'ויזה כאל',
+    logo: 'https://logo.clearbit.com/cal-online.co.il'
+  },
+  default: { 
+    bg: 'bg-slate-100', 
+    text: 'text-slate-600', 
+    name: 'חשבון' 
+  },
 };
+
+// Fallback icon component when logo fails to load
+function BankIcon({ bankType, size = 'normal' }: { bankType: string; size?: 'normal' | 'small' }) {
+  const style = bankStyles[bankType] || bankStyles.default;
+  const isCreditCard = CREDIT_CARD_TYPES.includes(bankType);
+  const iconSize = size === 'small' ? 'w-5 h-5' : 'w-7 h-7';
+  
+  return isCreditCard ? (
+    <CreditCard className={`${iconSize} ${style.text}`} />
+  ) : (
+    <Building2 className={`${iconSize} ${style.text}`} />
+  );
+}
 
 interface AccountCardsProps {
   accounts: Account[];
@@ -85,8 +171,19 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 card-hover"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`w-14 h-14 rounded-xl ${style.bg} flex items-center justify-center`}>
-                    <Building2 className={`w-7 h-7 ${style.text}`} />
+                  <div className={`w-14 h-14 rounded-xl ${style.bg} flex items-center justify-center overflow-hidden`}>
+                    {style.logo ? (
+                      <img 
+                        src={style.logo} 
+                        alt={style.name}
+                        className="w-10 h-10 object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <Building2 className={`w-7 h-7 ${style.text} ${style.logo ? 'hidden' : ''}`} />
                   </div>
                   {account.status === 'error' && (
                     <div className="flex items-center gap-1 text-red-500 text-xs">
@@ -164,8 +261,19 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
                   className="p-4 hover:bg-slate-50 transition flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg ${style.bg} flex items-center justify-center`}>
-                      <CreditCard className={`w-5 h-5 ${style.text}`} />
+                    <div className={`w-10 h-10 rounded-lg ${style.bg} flex items-center justify-center overflow-hidden`}>
+                      {style.logo ? (
+                        <img 
+                          src={style.logo} 
+                          alt={style.name}
+                          className="w-7 h-7 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <CreditCard className={`w-5 h-5 ${style.text} ${style.logo ? 'hidden' : ''}`} />
                     </div>
                     <div>
                       <h4 className="font-medium text-slate-800">{style.name}</h4>
