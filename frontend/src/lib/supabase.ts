@@ -199,7 +199,7 @@ export const api = {
     return data;
   },
 
-  async getPendingRecurringCount() {
+  async getPendingRecurringCount(): Promise<number> {
     // Only count non-installment recurring as pending (installments are auto-approved)
     const { count, error } = await supabase
       .from('recurring')
@@ -207,7 +207,7 @@ export const api = {
       .eq('is_confirmed', false)
       .neq('type', 'installment');
     if (error) throw error;
-    return count || 0;
+    return count ?? 0;
   },
 
   async confirmRecurring(id: string, confirmed: boolean) {
