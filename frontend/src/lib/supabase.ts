@@ -118,6 +118,24 @@ export const api = {
     return Math.abs(total); // Return as positive number
   },
 
+  // Get credit card transactions with processed_date for accurate chart display
+  async getCreditCardTransactionsWithProcessedDate(accountId: string) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 35).toISOString();
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('charged_amount, processed_date')
+      .eq('account_id', accountId)
+      .not('processed_date', 'is', null)
+      .gte('processed_date', today)
+      .lte('processed_date', endDate);
+    
+    if (error) throw error;
+    return data || [];
+  },
+
   // Transactions
   async getTransactions(filters?: {
     accountId?: string;

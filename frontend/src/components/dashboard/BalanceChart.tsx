@@ -14,7 +14,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { addDays, format, startOfDay, eachDayOfInterval } from 'date-fns';
+import { addDays, format, startOfDay, eachDayOfInterval, parseISO, isSameDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 interface BalanceChartProps {
@@ -23,31 +23,34 @@ interface BalanceChartProps {
   accounts: Account[];
 }
 
-// Default credit card charge day (usually 1st or 10th)
-const DEFAULT_CHARGE_DAY = 10;
+// Credit card transaction with processed date
+interface CreditCardTransaction {
+  charged_amount: number;
+  processed_date: string;
+}
 
 export default function BalanceChart({ currentBalance, recurring, accounts }: BalanceChartProps) {
-  const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
+  const [creditCardTransactions, setCreditCardTransactions] = useState<CreditCardTransaction[]>([]);
 
-  // Fetch credit card charges
+  // Fetch credit card transactions with their actual processed dates
   useEffect(() => {
-    const fetchCharges = async () => {
-      const charges: Record<string, number> = {};
+    const fetchTransactions = async () => {
+      const allTransactions: CreditCardTransaction[] = [];
       const creditCards = accounts.filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type));
       
       for (const card of creditCards) {
         try {
-          const charge = await api.getCreditCardUpcomingCharges(card.id);
-          charges[card.id] = charge;
+          const transactions = await api.getCreditCardTransactionsWithProcessedDate(card.id);
+          allTransactions.push(...transactions);
         } catch (error) {
-          console.error('Error fetching credit card charge:', error);
+          console.error('Error fetching credit card transactions:', error);
         }
       }
-      setCreditCardCharges(charges);
+      setCreditCardTransactions(allTransactions);
     };
 
     if (accounts.length > 0) {
-      fetchCharges();
+      fetchTransactions();
     }
   }, [accounts]);
 
@@ -56,15 +59,21 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
     const endDate = addDays(today, 30);
     const days = eachDayOfInterval({ start: today, end: endDate });
 
-    // Calculate total credit card charges
-    const totalCreditCardCharge = Object.values(creditCardCharges).reduce((sum, charge) => sum + charge, 0);
+    // Group credit card transactions by their processed_date
+    const chargesByDate: Record<string, number> = {};
+    creditCardTransactions.forEach(tx => {
+      if (tx.processed_date) {
+        const dateKey = format(startOfDay(parseISO(tx.processed_date)), 'yyyy-MM-dd');
+        chargesByDate[dateKey] = (chargesByDate[dateKey] || 0) + Math.abs(tx.charged_amount || 0);
+      }
+    });
 
     // Get bank accounts (not credit cards) balance
     const bankAccounts = accounts.filter(acc => !CREDIT_CARD_TYPES.includes(acc.bank_type));
     let runningBalance = bankAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 
     // Filter recurring that might be duplicates from credit card transactions
-    // Credit card purchases are already included in the credit card charge
+    // Credit card purchases are already included in the credit card transactions
     // So we only count recurring from bank accounts (direct debits, standing orders)
     const creditCardAccountIds = accounts
       .filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type))
@@ -76,10 +85,12 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
 
     return days.map((day) => {
       const dayOfMonth = day.getDate();
+      const dateKey = format(day, 'yyyy-MM-dd');
       
-      // Add credit card charge on the charge day
-      if (dayOfMonth === DEFAULT_CHARGE_DAY && totalCreditCardCharge > 0) {
-        runningBalance -= totalCreditCardCharge;
+      // Add credit card charges on their actual processed_date
+      const dayCharge = chargesByDate[dateKey] || 0;
+      if (dayCharge > 0) {
+        runningBalance -= dayCharge;
       }
       
       // Check for recurring transactions on this day (only from bank accounts)
@@ -102,7 +113,7 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
         isToday: day.getTime() === today.getTime(),
       };
     });
-  }, [currentBalance, recurring, accounts, creditCardCharges]);
+  }, [currentBalance, recurring, accounts, creditCardTransactions]);
 
   const minBalance = Math.min(...chartData.map((d) => d.balance));
   const maxBalance = Math.max(...chartData.map((d) => d.balance));
