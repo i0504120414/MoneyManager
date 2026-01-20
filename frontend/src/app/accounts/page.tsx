@@ -26,7 +26,6 @@ import {
   X,
   Eye,
   EyeOff,
-  Settings,
   Receipt,
   Trash2,
 } from 'lucide-react';
@@ -235,13 +234,6 @@ export default function AccountsPage() {
               <p className="text-slate-500">ניהול חשבונות בנק וכרטיסי אשראי</p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowTokenModal(true)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                title="הגדרות GitHub Token"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
               <button
                 onClick={handleSync}
                 disabled={syncing || !hasToken}

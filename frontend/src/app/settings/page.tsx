@@ -17,6 +17,10 @@ import {
   Mail,
   Trash2,
   AlertTriangle,
+  Github,
+  Eye,
+  EyeOff,
+  X,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -33,12 +37,25 @@ export default function SettingsPage() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
+  const [githubToken, setGithubToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [tokenSaved, setTokenSaved] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    // Load token from localStorage
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem('github_token');
+      if (savedToken) {
+        setGithubToken(savedToken);
+      }
+    }
+  }, []);
 
   const handleNotificationChange = (key: keyof typeof notifications) => {
     setNotifications((prev) => ({
@@ -59,6 +76,16 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
+  };
+
+  const handleSaveToken = () => {
+    if (githubToken.trim()) {
+      localStorage.setItem('github_token', githubToken.trim());
+    } else {
+      localStorage.removeItem('github_token');
+    }
+    setTokenSaved(true);
+    setTimeout(() => setTokenSaved(false), 2000);
   };
 
   const handleReset = async () => {
@@ -193,6 +220,58 @@ export default function SettingsPage() {
                   />
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* GitHub Token Section */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <Github className="w-5 h-5 text-slate-600" />
+                <h2 className="text-lg font-semibold text-slate-800">GitHub Token</h2>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-500">
+                הזן את ה-Personal Access Token מ-GitHub לצורך הפעלת סנכרון ידני והוספת חשבונות.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Personal Access Token</label>
+                <div className="relative">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="ghp_xxxxxxxxxxxx"
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  >
+                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  צור Token ב-GitHub Settings → Developer settings → Personal access tokens
+                  עם הרשאות: repo, workflow
+                </p>
+              </div>
+              <button
+                onClick={handleSaveToken}
+                className="w-full py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition flex items-center justify-center gap-2"
+              >
+                {tokenSaved ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>נשמר!</span>
+                  </>
+                ) : (
+                  <span>שמור Token</span>
+                )}
+              </button>
             </div>
           </div>
 
