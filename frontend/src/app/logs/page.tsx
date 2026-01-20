@@ -22,9 +22,11 @@ import { he } from 'date-fns/locale';
 
 interface LogEntry {
   id: string;
-  type: string;
+  sender: string;
+  level: string;
+  title?: string;
   message: string;
-  details?: string;
+  details?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -254,21 +256,28 @@ export default function LogsPage() {
                     <div key={log.id} className="p-4 hover:bg-slate-50 transition">
                       <div className="flex items-start gap-3">
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                          log.type === 'error' ? 'bg-red-500' :
-                          log.type === 'success' ? 'bg-green-500' :
-                          log.type === 'warning' ? 'bg-yellow-500' :
+                          log.level === 'ERROR' ? 'bg-red-500' :
+                          log.level === 'WARNING' ? 'bg-yellow-500' :
+                          log.level === 'INFO' ? 'bg-green-500' :
                           'bg-blue-500'
                         }`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-800">{log.message}</p>
-                          {log.details && (
+                          {log.title && (
+                            <p className="text-sm font-medium text-slate-800">{log.title}</p>
+                          )}
+                          <p className="text-sm text-slate-600">{log.message}</p>
+                          {log.details && Object.keys(log.details).length > 0 && (
                             <p className="text-xs text-slate-500 mt-1 font-mono bg-slate-50 p-2 rounded">
-                              {log.details}
+                              {JSON.stringify(log.details, null, 2)}
                             </p>
                           )}
-                          <p className="text-xs text-slate-400 mt-1">
-                            {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: he })}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-400">
+                              {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: he })}
+                            </span>
+                            <span className="text-xs text-slate-300">•</span>
+                            <span className="text-xs text-slate-400">{log.sender}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
