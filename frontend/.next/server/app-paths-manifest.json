@@ -1,7 +1,0 @@
-{
-  "/settings/page": "app/settings/page.js",
-  "/transactions/page": "app/transactions/page.js",
-  "/page": "app/page.js",
-  "/recurring/page": "app/recurring/page.js",
-  "/rules/page": "app/rules/page.js"
-}
