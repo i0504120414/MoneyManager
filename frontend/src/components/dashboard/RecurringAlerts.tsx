@@ -74,7 +74,7 @@ export default function RecurringAlerts({ items, onRefresh }: RecurringAlertsPro
 
             <div className="flex items-center gap-4">
               <p className="font-semibold text-slate-800 ltr-number">
-                ₪{item.amount_avg.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+                ₪{(item.amount_avg || 0).toLocaleString('he-IL', { minimumFractionDigits: 2 })}
               </p>
               <div className="flex items-center gap-2">
                 <button

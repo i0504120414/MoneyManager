@@ -37,7 +37,7 @@ export default function BalanceChart({ currentBalance, recurring }: BalanceChart
       recurring.forEach((item) => {
         if (item.day_of_month === dayOfMonth) {
           // Negative for expenses
-          runningBalance -= Math.abs(item.amount_avg);
+          runningBalance -= Math.abs(item.amount_avg || 0);
         }
       });
 

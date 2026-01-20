@@ -28,6 +28,7 @@ import {
   EyeOff,
   Settings,
   Receipt,
+  Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -45,6 +46,8 @@ export default function AccountsPage() {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [githubToken, setGithubToken] = useState('');
   const [showToken, setShowToken] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -130,6 +133,22 @@ export default function AccountsPage() {
     }
     setShowTokenModal(false);
     fetchData();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteConfirm) return;
+    
+    setDeleting(true);
+    try {
+      await api.deleteBankUserAccount(deleteConfirm.user_account_id);
+      setAccounts(accounts.filter(a => a.user_account_id !== deleteConfirm.user_account_id));
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('שגיאה במחיקת החשבון');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('github_token');
@@ -377,11 +396,31 @@ export default function AccountsPage() {
                     </div>
 
                     {account.last_sync && (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>
-                          עודכן לאחרונה {formatDistanceToNow(new Date(account.last_sync), { addSuffix: true, locale: he })}
-                        </span>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>
+                            עודכן לאחרונה {formatDistanceToNow(new Date(account.last_sync), { addSuffix: true, locale: he })}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setDeleteConfirm(account)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="הסר חשבון"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                    {!account.last_sync && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => setDeleteConfirm(account)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="הסר חשבון"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -471,6 +510,57 @@ export default function AccountsPage() {
               setTimeout(fetchData, 3000);
             }}
           />
+        )}
+
+        {/* Delete Account Confirmation Modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-slate-800">הסרת חשבון</h2>
+                </div>
+              </div>
+              <div className="p-6">
+                <p className="text-slate-600 mb-4">
+                  האם אתה בטוח שברצונך להסיר את החשבון הזה?
+                </p>
+                <div className="bg-slate-50 rounded-lg p-4 mb-4">
+                  <p className="font-medium text-slate-800">{getBankDisplayName(deleteConfirm.bank_type)}</p>
+                  {deleteConfirm.account_number && (
+                    <p className="text-sm text-slate-500">****{deleteConfirm.account_number.slice(-4)}</p>
+                  )}
+                </div>
+                <p className="text-sm text-red-600">
+                  פעולה זו תמחק את החשבון, כל העסקאות שלו, והתשלומים הקבועים הקשורים אליו.
+                  לא ניתן לבטל פעולה זו.
+                </p>
+              </div>
+              <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <Loader2 className="w-4 h-4 spinner" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span>הסר חשבון</span>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

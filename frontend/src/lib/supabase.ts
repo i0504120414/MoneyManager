@@ -8,6 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Types for database tables
 export interface Account {
   id: string;
+  user_account_id: string;
   bank_name: string;
   bank_type: string;
   account_number?: string;
@@ -284,6 +285,78 @@ export const api = {
       `)
       .gte('date', startDate)
       .lte('date', endDate);
+    if (error) throw error;
+    return data;
+  },
+
+  // Reset all data (keeps bank_user_accounts credentials)
+  async resetAllData() {
+    // Delete in order due to foreign key constraints
+    // 1. Delete recurring (references bank_accounts)
+    const { error: recurringError } = await supabase
+      .from('recurring')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+    if (recurringError) throw recurringError;
+
+    // 2. Delete transactions (references bank_accounts)
+    const { error: txError } = await supabase
+      .from('transactions')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (txError) throw txError;
+
+    // 3. Delete bank_accounts (references bank_user_accounts)
+    const { error: accountsError } = await supabase
+      .from('bank_accounts')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (accountsError) throw accountsError;
+
+    // 4. Delete categories
+    const { error: catError } = await supabase
+      .from('categories')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (catError) throw catError;
+
+    // 5. Delete assignment_rules
+    const { error: rulesError } = await supabase
+      .from('assignment_rules')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (rulesError) throw rulesError;
+
+    // 6. Delete logs
+    const { error: logsError } = await supabase
+      .from('logs')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (logsError) throw logsError;
+
+    // 7. Reset last_updated in bank_user_accounts to trigger full re-sync
+    const { error: updateError } = await supabase
+      .from('bank_user_accounts')
+      .update({ last_updated: null })
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (updateError) throw updateError;
+  },
+
+  // Delete a bank user account and all its data
+  async deleteBankUserAccount(userAccountId: string) {
+    // CASCADE will handle bank_accounts, transactions, recurring
+    const { error } = await supabase
+      .from('bank_user_accounts')
+      .delete()
+      .eq('id', userAccountId);
+    if (error) throw error;
+  },
+
+  // Get bank user accounts (for listing accounts to delete)
+  async getBankUserAccounts() {
+    const { data, error } = await supabase
+      .from('bank_user_accounts')
+      .select('id, bank_type, created_at');
     if (error) throw error;
     return data;
   },

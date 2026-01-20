@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/supabase';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   Settings,
@@ -14,6 +15,8 @@ import {
   Loader2,
   Check,
   Mail,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -27,6 +30,9 @@ export default function SettingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,6 +59,23 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
+  };
+
+  const handleReset = async () => {
+    if (resetConfirmText !== 'מחק הכל') return;
+    
+    setResetting(true);
+    try {
+      await api.resetAllData();
+      alert('כל הנתונים נמחקו בהצלחה. החשבונות נשמרו.');
+      setShowResetModal(false);
+      setResetConfirmText('');
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      alert('שגיאה במחיקת הנתונים');
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (authLoading) {
@@ -215,6 +238,29 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Danger Zone */}
+          <div className="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-red-200">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <h2 className="text-lg font-semibold text-red-800">אזור סכנה</h2>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-red-700 mb-4">
+                איפוס המערכת ימחק את כל העסקאות, תשלומים קבועים, קטגוריות וחוקי שיוך.
+                החשבונות המחוברים (פרטי הבנק) יישמרו.
+              </p>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="w-full py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>איפוס כל הנתונים</span>
+              </button>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="space-y-3">
             <button
@@ -243,6 +289,72 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Reset Confirmation Modal */}
+        {showResetModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-slate-800">איפוס כל הנתונים</h2>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-slate-600">
+                  פעולה זו תמחק:
+                </p>
+                <ul className="text-sm text-slate-500 space-y-1 list-disc list-inside">
+                  <li>כל העסקאות</li>
+                  <li>תשלומים קבועים</li>
+                  <li>קטגוריות ותקציבים</li>
+                  <li>חוקי שיוך</li>
+                  <li>לוגים</li>
+                </ul>
+                <p className="text-sm text-green-600 font-medium">
+                  ✓ החשבונות המחוברים (פרטי הבנק) יישמרו
+                </p>
+                <div className="pt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    הקלד &quot;מחק הכל&quot; לאישור:
+                  </label>
+                  <input
+                    type="text"
+                    value={resetConfirmText}
+                    onChange={(e) => setResetConfirmText(e.target.value)}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500"
+                    placeholder="מחק הכל"
+                  />
+                </div>
+              </div>
+              <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setResetConfirmText('');
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={handleReset}
+                  disabled={resetConfirmText !== 'מחק הכל' || resetting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  {resetting ? (
+                    <Loader2 className="w-4 h-4 spinner" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span>מחק הכל</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

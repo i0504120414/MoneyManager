@@ -99,11 +99,11 @@ export default function RecurringPage() {
   };
   
   const totalIncome = recurring
-    .filter((r) => r.is_confirmed && r.average_amount > 0)
-    .reduce((sum, r) => sum + r.average_amount, 0);
+    .filter((r) => r.is_confirmed && (r.average_amount || r.amount_avg || 0) > 0)
+    .reduce((sum, r) => sum + (r.average_amount || r.amount_avg || 0), 0);
   const totalExpenses = recurring
-    .filter((r) => r.is_confirmed && r.average_amount < 0)
-    .reduce((sum, r) => sum + Math.abs(r.average_amount), 0);
+    .filter((r) => r.is_confirmed && (r.average_amount || r.amount_avg || 0) < 0)
+    .reduce((sum, r) => sum + Math.abs(r.average_amount || r.amount_avg || 0), 0);
 
   if (authLoading || loading) {
     return (
@@ -210,15 +210,16 @@ export default function RecurringPage() {
                   const remainingInstallments = calculateRemainingInstallments(item);
                   const isActive = item.type === 'installment' ? isInstallmentActive(item) : item.is_confirmed;
                   const needsApproval = !item.is_confirmed && item.type !== 'installment';
+                  const amount = item.average_amount ?? item.amount_avg ?? 0;
                   
                   return (
                   <div key={item.id} className={`p-5 hover:bg-slate-50 transition ${!isActive ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          item.average_amount >= 0 ? 'bg-green-50' : 'bg-red-50'
+                          amount >= 0 ? 'bg-green-50' : 'bg-red-50'
                         }`}>
-                          {item.average_amount >= 0 ? (
+                          {amount >= 0 ? (
                             <ArrowUpCircle className="w-5 h-5 text-green-600" />
                           ) : (
                             <ArrowDownCircle className="w-5 h-5 text-red-600" />
@@ -265,10 +266,10 @@ export default function RecurringPage() {
 
                       <div className="flex items-center gap-4">
                         <p className={`text-lg font-bold ltr-number ${
-                          item.average_amount >= 0 ? 'text-green-600' : 'text-red-600'
+                          amount >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {item.average_amount >= 0 ? '+' : ''}
-                          ₪{item.average_amount.toLocaleString('he-IL', { maximumFractionDigits: 0 })}
+                          {amount >= 0 ? '+' : ''}
+                          ₪{Math.abs(amount).toLocaleString('he-IL', { maximumFractionDigits: 0 })}
                         </p>
 
                         {needsApproval && (
