@@ -51,14 +51,21 @@ export default function SettingsPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    // Load token from localStorage
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('github_token');
-      if (savedToken) {
-        setGithubToken(savedToken);
+    // Load token from database
+    const loadToken = async () => {
+      try {
+        const savedToken = await api.getGithubToken();
+        if (savedToken) {
+          setGithubToken(savedToken);
+        }
+      } catch (error) {
+        console.error('Error loading GitHub token:', error);
       }
+    };
+    if (user) {
+      loadToken();
     }
-  }, []);
+  }, [user]);
 
   const handleNotificationChange = (key: keyof typeof notifications) => {
     setNotifications((prev) => ({
@@ -315,16 +322,21 @@ export default function SettingsPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const tokenToSave = editingToken ? newToken : githubToken;
                         if (tokenToSave.trim()) {
-                          localStorage.setItem('github_token', tokenToSave.trim());
-                          setGithubToken(tokenToSave.trim());
+                          try {
+                            await api.saveGithubToken(tokenToSave.trim());
+                            setGithubToken(tokenToSave.trim());
+                            setTokenSaved(true);
+                            setTimeout(() => setTokenSaved(false), 2000);
+                          } catch (error) {
+                            console.error('Error saving token:', error);
+                            alert('שגיאה בשמירת ה-Token');
+                          }
                         }
                         setEditingToken(false);
                         setNewToken('');
-                        setTokenSaved(true);
-                        setTimeout(() => setTokenSaved(false), 2000);
                       }}
                       disabled={editingToken ? !newToken.trim() : !githubToken.trim()}
                       className="flex-1 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"

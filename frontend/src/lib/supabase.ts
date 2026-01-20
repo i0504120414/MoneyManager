@@ -353,4 +353,30 @@ export const api = {
     if (error) throw error;
     return data;
   },
+
+  // Get GitHub token from database
+  async getGithubToken(): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'github_token')
+      .single();
+    if (error) {
+      console.error('Error fetching GitHub token:', error);
+      return null;
+    }
+    return data?.value || null;
+  },
+
+  // Save GitHub token to database
+  async saveGithubToken(token: string) {
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ 
+        key: 'github_token', 
+        value: token,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+    if (error) throw error;
+  },
 };

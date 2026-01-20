@@ -55,14 +55,21 @@ export default function AccountsPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    // Load token from localStorage
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('github_token');
-      if (savedToken) {
-        setGithubToken(savedToken);
+    // Load token from database
+    const loadToken = async () => {
+      try {
+        const savedToken = await api.getGithubToken();
+        if (savedToken) {
+          setGithubToken(savedToken);
+        }
+      } catch (error) {
+        console.error('Error loading GitHub token:', error);
       }
+    };
+    if (user) {
+      loadToken();
     }
-  }, []);
+  }, [user]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -84,12 +91,10 @@ export default function AccountsPage() {
       setCreditCardCharges(charges);
 
       // Fetch workflow runs if token exists
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('github_token');
-        if (token) {
-          const runs = await getWorkflowRuns(token);
-          setWorkflowRuns(runs);
-        }
+      const token = await api.getGithubToken();
+      if (token) {
+        const runs = await getWorkflowRuns(token);
+        setWorkflowRuns(runs);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -108,7 +113,7 @@ export default function AccountsPage() {
   }, [user, fetchData]);
 
   const handleSync = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+    const token = await api.getGithubToken();
     if (!token) {
       setShowTokenModal(true);
       return;
@@ -126,12 +131,15 @@ export default function AccountsPage() {
     setSyncing(false);
   };
 
-  const handleSaveToken = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('github_token', githubToken);
+  const handleSaveToken = async () => {
+    try {
+      await api.saveGithubToken(githubToken);
+      setShowTokenModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error saving token:', error);
+      alert('שגיאה בשמירת ה-Token');
     }
-    setShowTokenModal(false);
-    fetchData();
   };
 
   const handleDeleteAccount = async () => {
@@ -150,7 +158,7 @@ export default function AccountsPage() {
     }
   };
 
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('github_token');
+  const hasToken = !!githubToken;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -569,7 +577,7 @@ function AddAccountModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const selectedBankConfig = BANKS.find(b => b.id === selectedBank);
 
   const handleSubmit = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+    const token = await api.getGithubToken();
     if (!token || !selectedBank) return;
 
     setSubmitting(true);

@@ -107,6 +107,21 @@ CREATE TABLE IF NOT EXISTS transaction_categories (
   UNIQUE(transaction_id, category_id)
 );
 
+-- Create app settings table (global settings like GitHub token)
+CREATE TABLE IF NOT EXISTS app_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key VARCHAR(100) NOT NULL UNIQUE,
+  value TEXT,
+  created_at TIMESTAMP DEFAULT now(),
+  updated_at TIMESTAMP DEFAULT now()
+);
+
+-- Insert default GitHub token (replace with your actual token)
+-- To get a token: GitHub Settings → Developer settings → Personal access tokens → Generate new token
+-- Required permissions: repo, workflow
+INSERT INTO app_settings (key, value) VALUES ('github_token', '')
+ON CONFLICT (key) DO NOTHING;
+
 -- =============================================================================
 -- STEP 2: CREATE ALL INDEXES
 -- =============================================================================
