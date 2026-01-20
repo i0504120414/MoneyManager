@@ -1,7 +1,8 @@
 'use client';
 
-import { Account } from '@/lib/supabase';
-import { CreditCard, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Account, api, CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { CreditCard, TrendingUp, TrendingDown, AlertCircle, Receipt } from 'lucide-react';
 
 // Bank logos/colors mapping
 const bankStyles: Record<string, { bg: string; text: string; name: string }> = {
@@ -27,6 +28,29 @@ interface AccountCardsProps {
 }
 
 export default function AccountCards({ accounts }: AccountCardsProps) {
+  const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchCreditCardCharges = async () => {
+      const charges: Record<string, number> = {};
+      for (const account of accounts) {
+        if (CREDIT_CARD_TYPES.includes(account.bank_type)) {
+          try {
+            const charge = await api.getCreditCardUpcomingCharges(account.id);
+            charges[account.id] = charge;
+          } catch (error) {
+            console.error('Error fetching credit card charges:', error);
+          }
+        }
+      }
+      setCreditCardCharges(charges);
+    };
+
+    if (accounts.length > 0) {
+      fetchCreditCardCharges();
+    }
+  }, [accounts]);
+
   if (accounts.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
@@ -43,8 +67,11 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {accounts.map((account) => {
         const style = bankStyles[account.bank_type] || bankStyles.default;
-        const balance = account.balance || 0;
-        const isPositive = balance >= 0;
+        const isCreditCard = CREDIT_CARD_TYPES.includes(account.bank_type);
+        const displayAmount = isCreditCard 
+          ? -(creditCardCharges[account.id] || 0) // Show as negative (charge)
+          : (account.balance || 0);
+        const isPositive = displayAmount >= 0;
 
         return (
           <div
@@ -70,17 +97,21 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
 
             <div className="mt-4 flex items-end justify-between">
               <div>
-                <p className="text-xs text-slate-400">יתרה נוכחית</p>
+                <p className="text-xs text-slate-400">
+                  {isCreditCard ? 'חיוב קרוב' : 'יתרה נוכחית'}
+                </p>
                 <p
                   className={`text-2xl font-bold ltr-number ${
                     isPositive ? 'text-slate-800' : 'text-red-600'
                   }`}
                 >
-                  ₪{balance.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+                  ₪{Math.abs(displayAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className={`p-2 rounded-lg ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
-                {isPositive ? (
+              <div className={`p-2 rounded-lg ${isCreditCard ? 'bg-purple-50' : isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+                {isCreditCard ? (
+                  <Receipt className="w-5 h-5 text-purple-600" />
+                ) : isPositive ? (
                   <TrendingUp className="w-5 h-5 text-green-600" />
                 ) : (
                   <TrendingDown className="w-5 h-5 text-red-600" />

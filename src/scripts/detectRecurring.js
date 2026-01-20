@@ -43,17 +43,23 @@ async function detectInstallments(supabase, accountId) {
         .single();
       
       if (!existing) {
+        // Auto-confirm installments - they don't need manual approval
+        // Store installment info for calculating remaining payments
         recurringInstallments.push({
           account_id: accountId,
           type: 'installment',
           amount_avg: tx.charged_amount,
           description: `${tx.description} (${tx.installment_number}/${tx.installment_total})`,
-          is_confirmed: false,
+          is_confirmed: true, // Auto-confirm installments
+          installment_total: tx.installment_total,
+          installment_current: tx.installment_number,
+          first_detected_date: tx.date,
         });
-        logger.info('Detected installment transaction', {
+        logger.info('Detected installment transaction (auto-confirmed)', {
           account_id: accountId,
           description: tx.description,
           total_installments: tx.installment_total,
+          current_installment: tx.installment_number,
           amount: tx.charged_amount
         });
       }

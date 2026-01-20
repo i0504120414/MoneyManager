@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/supabase';
 import {
   LayoutDashboard,
   Receipt,
@@ -23,7 +24,7 @@ const menuItems = [
   { href: '/transactions', icon: Receipt, label: 'עסקאות' },
   { href: '/accounts', icon: CreditCard, label: 'חשבונות' },
   { href: '/budget', icon: PieChart, label: 'תקציב' },
-  { href: '/recurring', icon: RefreshCw, label: 'תשלומים קבועים' },
+  { href: '/recurring', icon: RefreshCw, label: 'תשלומים קבועים', hasBadge: true },
   { href: '/rules', icon: GitBranch, label: 'חוקי שיוך' },
   { href: '/settings', icon: Settings, label: 'הגדרות' },
 ];
@@ -32,6 +33,25 @@ export default function Sidebar() {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const count = await api.getPendingRecurringCount();
+        setPendingRecurringCount(count);
+      } catch (error) {
+        console.error('Error fetching pending recurring count:', error);
+      }
+    };
+
+    if (user) {
+      fetchPendingCount();
+      // Refresh every 60 seconds
+      const interval = setInterval(fetchPendingCount, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   return (
     <>
@@ -81,6 +101,7 @@ export default function Sidebar() {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item) => {
               const isActive = pathname === item.href;
+              const showBadge = item.hasBadge && pendingRecurringCount > 0;
               return (
                 <Link
                   key={item.href}
@@ -94,7 +115,14 @@ export default function Sidebar() {
                     }
                   `}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <div className="relative">
+                    <item.icon className="w-5 h-5" />
+                    {showBadge && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+                        {pendingRecurringCount > 9 ? '9+' : pendingRecurringCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );

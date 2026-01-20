@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   created_at TIMESTAMP DEFAULT now(),
   last_updated TIMESTAMP DEFAULT now(),
   is_active BOOLEAN DEFAULT true,
+  is_cancelled BOOLEAN DEFAULT false, -- Card cancelled/closed (not just inactive)
   UNIQUE(user_account_id, account_number)
 );
 
@@ -69,6 +70,9 @@ CREATE TABLE IF NOT EXISTS recurring (
   day_of_month INT,
   description VARCHAR(500),
   is_confirmed BOOLEAN DEFAULT false,
+  installment_total INT, -- Total number of installments (for installment type)
+  installment_current INT, -- Current installment number when first detected
+  first_detected_date TIMESTAMP, -- Date when first detected (to calculate remaining)
   created_at TIMESTAMP DEFAULT now(),
   last_detected_at TIMESTAMP DEFAULT now()
 );

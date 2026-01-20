@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { api, Account } from '@/lib/supabase';
+import { api, Account, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import {
   triggerWorkflow,
   getWorkflowRuns,
@@ -27,6 +27,7 @@ import {
   Eye,
   EyeOff,
   Settings,
+  Receipt,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -36,6 +37,7 @@ export default function AccountsPage() {
   const router = useRouter();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -64,6 +66,20 @@ export default function AccountsPage() {
     try {
       const accountsData = await api.getAccounts();
       setAccounts(accountsData || []);
+      
+      // Fetch credit card charges
+      const charges: Record<string, number> = {};
+      for (const account of accountsData || []) {
+        if (CREDIT_CARD_TYPES.includes(account.bank_type)) {
+          try {
+            const charge = await api.getCreditCardUpcomingCharges(account.id);
+            charges[account.id] = charge;
+          } catch (error) {
+            console.error('Error fetching credit card charges:', error);
+          }
+        }
+      }
+      setCreditCardCharges(charges);
 
       // Fetch workflow runs if token exists
       if (typeof window !== 'undefined') {
@@ -167,7 +183,13 @@ export default function AccountsPage() {
     return banks[bankName] || bankName;
   };
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + (acc.current_balance || 0), 0);
+  // Calculate total: bank balances + credit card charges (as negative)
+  const totalBalance = accounts.reduce((sum, acc) => {
+    if (CREDIT_CARD_TYPES.includes(acc.bank_type)) {
+      return sum - (creditCardCharges[acc.id] || 0); // Credit card charges are expenses
+    }
+    return sum + (acc.current_balance || 0);
+  }, 0);
 
   if (authLoading || loading) {
     return (
@@ -309,12 +331,22 @@ export default function AccountsPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {accounts.map((account) => (
+                {accounts.map((account) => {
+                  const isCreditCard = CREDIT_CARD_TYPES.includes(account.bank_type);
+                  const displayAmount = isCreditCard 
+                    ? -(creditCardCharges[account.id] || 0)
+                    : (account.current_balance || 0);
+                  
+                  return (
                   <div key={account.id} className="p-6 hover:bg-slate-50 transition">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-slate-600" />
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCreditCard ? 'bg-purple-100' : 'bg-slate-100'}`}>
+                          {isCreditCard ? (
+                            <CreditCard className="w-6 h-6 text-purple-600" />
+                          ) : (
+                            <Building2 className="w-6 h-6 text-slate-600" />
+                          )}
                         </div>
                         <div>
                           <h3 className="font-medium text-slate-800">
@@ -322,17 +354,20 @@ export default function AccountsPage() {
                           </h3>
                           {account.account_number && (
                             <p className="text-sm text-slate-500 ltr-number">
-                              חשבון: ****{account.account_number.slice(-4)}
+                              {isCreditCard ? 'כרטיס' : 'חשבון'}: ****{account.account_number.slice(-4)}
                             </p>
                           )}
                         </div>
                       </div>
 
                       <div className="text-left">
+                        <p className="text-xs text-slate-400 mb-0.5">
+                          {isCreditCard ? 'חיוב קרוב' : 'יתרה'}
+                        </p>
                         <p className={`text-xl font-bold ltr-number ${
-                          (account.current_balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                          displayAmount >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          ₪{(account.current_balance || 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}
+                          ₪{Math.abs(displayAmount).toLocaleString('he-IL', { maximumFractionDigits: 0 })}
                         </p>
                         <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
                           {getStatusIcon(account.status)}
@@ -350,7 +385,8 @@ export default function AccountsPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

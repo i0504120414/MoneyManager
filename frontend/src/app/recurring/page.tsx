@@ -70,12 +70,34 @@ export default function RecurringPage() {
   };
 
   const filteredRecurring = recurring.filter((r) => {
-    if (filter === 'pending') return !r.is_confirmed;
-    if (filter === 'confirmed') return r.is_confirmed;
+    if (filter === 'pending') return !r.is_confirmed && r.type !== 'installment';
+    if (filter === 'confirmed') return r.is_confirmed || r.type === 'installment';
     return true;
   });
 
-  const pendingCount = recurring.filter((r) => !r.is_confirmed).length;
+  // Only count non-installment recurring as pending (installments are auto-approved)
+  const pendingCount = recurring.filter((r) => !r.is_confirmed && r.type !== 'installment').length;
+  
+  // Calculate remaining installments for each installment
+  const calculateRemainingInstallments = (item: RecurringItem) => {
+    if (item.type !== 'installment' || !item.installment_total || !item.first_detected_date) {
+      return null;
+    }
+    const firstDate = new Date(item.first_detected_date);
+    const now = new Date();
+    const monthsPassed = (now.getFullYear() - firstDate.getFullYear()) * 12 + 
+                         (now.getMonth() - firstDate.getMonth());
+    const startInstallment = item.installment_current || 1;
+    const remaining = item.installment_total - startInstallment - monthsPassed;
+    return Math.max(0, remaining);
+  };
+  
+  // Check if installment is still active for next month
+  const isInstallmentActive = (item: RecurringItem) => {
+    const remaining = calculateRemainingInstallments(item);
+    return remaining !== null && remaining > 0;
+  };
+  
   const totalIncome = recurring
     .filter((r) => r.is_confirmed && r.average_amount > 0)
     .reduce((sum, r) => sum + r.average_amount, 0);
@@ -184,8 +206,13 @@ export default function RecurringPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {filteredRecurring.map((item) => (
-                  <div key={item.id} className="p-5 hover:bg-slate-50 transition">
+                {filteredRecurring.map((item) => {
+                  const remainingInstallments = calculateRemainingInstallments(item);
+                  const isActive = item.type === 'installment' ? isInstallmentActive(item) : item.is_confirmed;
+                  const needsApproval = !item.is_confirmed && item.type !== 'installment';
+                  
+                  return (
+                  <div key={item.id} className={`p-5 hover:bg-slate-50 transition ${!isActive ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -199,12 +226,35 @@ export default function RecurringPage() {
                         </div>
                         <div>
                           <h3 className="font-medium text-slate-800">{item.description}</h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-sm text-slate-500 flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              יום {item.expected_day} בחודש
-                            </span>
-                            {!item.is_confirmed && (
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {item.expected_day && (
+                              <span className="text-sm text-slate-500 flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                יום {item.expected_day} בחודש
+                              </span>
+                            )}
+                            {item.type === 'installment' && remainingInstallments !== null && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                remainingInstallments > 0 
+                                  ? 'bg-blue-100 text-blue-700' 
+                                  : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {remainingInstallments > 0 
+                                  ? `נותרו ${remainingInstallments} תשלומים` 
+                                  : 'הסתיים'}
+                              </span>
+                            )}
+                            {item.type === 'installment' && (
+                              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                                תשלומים
+                              </span>
+                            )}
+                            {item.type === 'direct_debit' && (
+                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                הוראת קבע
+                              </span>
+                            )}
+                            {needsApproval && (
                               <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
                                 ממתין לאישור
                               </span>
@@ -221,7 +271,7 @@ export default function RecurringPage() {
                           ₪{item.average_amount.toLocaleString('he-IL', { maximumFractionDigits: 0 })}
                         </p>
 
-                        {!item.is_confirmed && (
+                        {needsApproval && (
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleConfirm(item.id)}
@@ -242,7 +292,8 @@ export default function RecurringPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -250,8 +301,9 @@ export default function RecurringPage() {
           {/* Info */}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <p className="text-sm text-blue-700">
-              <strong>איך זה עובד?</strong> המערכת מזהה אוטומטית תשלומים שחוזרים על עצמם 
-              (כמו משכורת, שכירות, מנויים). אשר את הפריטים הנכונים כדי שהתחזית תהיה מדויקת יותר.
+              <strong>איך זה עובד?</strong> המערכת מזהה אוטומטית תשלומים שחוזרים על עצמם. 
+              תשלומים (חיובים בתשלומים) מאושרים אוטומטית והמערכת מחשבת כמה תשלומים נותרו.
+              הוראות קבע ותשלומים שזוהו אלגוריתמית דורשים אישור ידני.
             </p>
           </div>
         </div>

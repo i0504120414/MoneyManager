@@ -17,6 +17,7 @@ export interface Account {
   status: 'active' | 'inactive' | 'error';
   current_balance?: number;
   balance?: number;
+  is_cancelled?: boolean;
 }
 
 export interface Transaction {
@@ -55,6 +56,9 @@ export interface Recurring {
   day_of_month?: number;
   description: string;
   is_confirmed: boolean;
+  installment_total?: number; // Total installments
+  installment_current?: number; // Current installment when first detected
+  first_detected_date?: string; // Date when first detected
 }
 
 export type RecurringItem = Recurring;
@@ -76,6 +80,9 @@ export interface AssignmentRule {
   is_active: boolean;
 }
 
+// Credit card types that should show upcoming charges instead of balance
+export const CREDIT_CARD_TYPES = ['isracard', 'amex', 'max', 'visaCal'];
+
 // API functions
 export const api = {
   // Accounts
@@ -83,9 +90,31 @@ export const api = {
     const { data, error } = await supabase
       .from('bank_accounts')
       .select('*')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .or('is_cancelled.is.null,is_cancelled.eq.false'); // Filter out cancelled cards
     if (error) throw error;
     return data;
+  },
+
+  // Get upcoming credit card charges (sum of charged_amount for pending transactions)
+  async getCreditCardUpcomingCharges(accountId: string) {
+    // Get transactions from current month that haven't been processed yet
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('charged_amount')
+      .eq('account_id', accountId)
+      .gte('date', startOfMonth)
+      .lte('date', endOfNextMonth);
+    
+    if (error) throw error;
+    
+    // Sum all charged amounts (they are negative for expenses)
+    const total = (data || []).reduce((sum, tx) => sum + (tx.charged_amount || 0), 0);
+    return Math.abs(total); // Return as positive number
   },
 
   // Transactions
@@ -167,6 +196,17 @@ export const api = {
       .order('amount_avg', { ascending: false });
     if (error) throw error;
     return data;
+  },
+
+  async getPendingRecurringCount() {
+    // Only count non-installment recurring as pending (installments are auto-approved)
+    const { count, error } = await supabase
+      .from('recurring')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_confirmed', false)
+      .neq('type', 'installment');
+    if (error) throw error;
+    return count || 0;
   },
 
   async confirmRecurring(id: string, confirmed: boolean) {
