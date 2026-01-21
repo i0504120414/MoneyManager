@@ -116,6 +116,7 @@ interface AccountCardsProps {
 
 export default function AccountCards({ accounts }: AccountCardsProps) {
   const [creditCardCharges, setCreditCardCharges] = useState<Record<string, number>>({});
+  const [showAllCards, setShowAllCards] = useState(false);
 
   // Separate banks from credit cards
   const bankAccounts = accounts.filter(acc => !CREDIT_CARD_TYPES.includes(acc.bank_type));
@@ -240,7 +241,7 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
 
           {/* Mini list of cards */}
           <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-            {creditCardAccounts.slice(0, 3).map((account) => {
+            {(showAllCards ? creditCardAccounts : creditCardAccounts.slice(0, 3)).map((account) => {
               const style = bankStyles[account.bank_type] || bankStyles.default;
               const charge = creditCardCharges[account.id] || 0;
 
@@ -263,7 +264,12 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
               );
             })}
             {creditCardAccounts.length > 3 && (
-              <p className="text-xs text-slate-400 text-center">+{creditCardAccounts.length - 3} נוספים</p>
+              <button 
+                onClick={() => setShowAllCards(!showAllCards)}
+                className="text-xs text-blue-500 hover:text-blue-600 text-center w-full py-1 hover:bg-slate-50 rounded transition"
+              >
+                {showAllCards ? 'הצג פחות' : `+${creditCardAccounts.length - 3} נוספים`}
+              </button>
             )}
           </div>
         </div>

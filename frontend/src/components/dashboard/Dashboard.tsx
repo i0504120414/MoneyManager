@@ -56,8 +56,12 @@ export default function Dashboard() {
   // Calculate total balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
   
-  // Filter accounts: only active (not error, not cancelled) accounts
-  const activeAccounts = accounts.filter(acc => acc.status !== 'error' && !acc.is_cancelled);
+  // Filter accounts: only active (not error, not cancelled) and with non-zero balance
+  const activeAccounts = accounts.filter(acc => 
+    acc.status !== 'error' && 
+    !acc.is_cancelled && 
+    (acc.balance || 0) !== 0
+  );
 
   return (
     <div className="space-y-6">

@@ -62,10 +62,10 @@ export default function RecurringPage() {
 
   const handleReject = async (id: string) => {
     try {
-      await api.confirmRecurring(id, false);
+      await api.deleteRecurring(id);
       setRecurring(recurring.filter((r) => r.id !== id));
     } catch (error) {
-      console.error('Error rejecting recurring:', error);
+      console.error('Error deleting recurring:', error);
     }
   };
 

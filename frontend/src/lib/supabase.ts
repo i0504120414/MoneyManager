@@ -236,6 +236,14 @@ export const api = {
     if (error) throw error;
   },
 
+  async deleteRecurring(id: string) {
+    const { error } = await supabase
+      .from('recurring')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   // Notifications
   async getNotifications() {
     const { data, error } = await supabase
