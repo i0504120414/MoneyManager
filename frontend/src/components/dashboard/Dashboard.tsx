@@ -10,7 +10,7 @@ import RecentTransactions from './RecentTransactions';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 export default function Dashboard() {
-  const { accounts, transactions, categories, recurring, isLoading, refresh } = useDashboardData();
+  const { accounts, transactions, categories, recurring, creditCardTransactions, isLoading, refresh } = useDashboardData();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -72,6 +72,7 @@ export default function Dashboard() {
           currentBalance={totalBalance}
           recurring={recurring.filter(r => r.is_confirmed)}
           accounts={activeAccounts}
+          creditCardTransactions={creditCardTransactions}
         />
       </div>
 

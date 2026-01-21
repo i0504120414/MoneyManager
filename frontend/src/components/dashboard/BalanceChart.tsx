@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
-import { Recurring, Account, api, CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { useMemo } from 'react';
+import { Recurring, Account, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import {
   BarChart,
   Bar,
@@ -17,18 +17,19 @@ import { addDays, format, startOfDay, eachDayOfInterval, parseISO } from 'date-f
 import { he } from 'date-fns/locale';
 import { ArrowDown, ArrowUp, CreditCard, Calendar, AlertTriangle, Landmark } from 'lucide-react';
 
-interface BalanceChartProps {
-  currentBalance: number;
-  recurring: Recurring[];
-  accounts: Account[];
-}
-
 // Credit card transaction with processed date
 interface CreditCardTransaction {
   charged_amount: number;
   processed_date: string;
   description?: string;
   account_id: string;
+}
+
+interface BalanceChartProps {
+  currentBalance: number;
+  recurring: Recurring[];
+  accounts: Account[];
+  creditCardTransactions: CreditCardTransaction[];
 }
 
 interface DayChange {
@@ -47,32 +48,7 @@ interface ChartDataPoint {
   changes: DayChange[];
 }
 
-export default function BalanceChart({ currentBalance, recurring, accounts }: BalanceChartProps) {
-  const [creditCardTransactions, setCreditCardTransactions] = useState<CreditCardTransaction[]>([]);
-  const [selectedDay, setSelectedDay] = useState<ChartDataPoint | null>(null);
-
-  // Fetch credit card transactions with their actual processed dates
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      const allTransactions: CreditCardTransaction[] = [];
-      const creditCards = accounts.filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type));
-      
-      for (const card of creditCards) {
-        try {
-          const transactions = await api.getCreditCardTransactionsWithProcessedDate(card.id);
-          allTransactions.push(...transactions);
-        } catch (error) {
-          console.error('Error fetching credit card transactions:', error);
-        }
-      }
-      setCreditCardTransactions(allTransactions);
-    };
-
-    if (accounts.length > 0) {
-      fetchTransactions();
-    }
-  }, [accounts]);
-
+export default function BalanceChart({ currentBalance, recurring, accounts, creditCardTransactions }: BalanceChartProps) {
   const chartData = useMemo(() => {
     const today = startOfDay(new Date());
     const endDate = addDays(today, 30);
@@ -224,11 +200,6 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
           <BarChart 
             data={chartData} 
             margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-            onClick={(data) => {
-              if (data && data.activePayload) {
-                setSelectedDay(data.activePayload[0].payload);
-              }
-            }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
             <XAxis
