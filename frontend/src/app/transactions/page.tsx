@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { api, Transaction, Category, CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { api, Transaction, CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { useCategories, useTransactions } from '@/lib/hooks';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   Search,
@@ -26,9 +27,6 @@ export default function TransactionsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
@@ -41,36 +39,19 @@ export default function TransactionsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Use SWR hooks for caching
+  const { categories } = useCategories();
+  const { transactions, isLoading: loading, refresh: refreshTransactions } = useTransactions({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    search: search || undefined,
+  });
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [txData, catData] = await Promise.all([
-          api.getTransactions({
-            startDate: dateRange.start,
-            endDate: dateRange.end,
-            search: search || undefined,
-          }),
-          api.getCategories(),
-        ]);
-        setTransactions(txData || []);
-        setCategories(catData || []);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchData();
-    }
-  }, [user, dateRange, search]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -100,12 +81,8 @@ export default function TransactionsPage() {
   const handleBulkCategoryUpdate = async (categoryId: string) => {
     try {
       await api.updateTransactionCategory(Array.from(selectedIds), categoryId);
-      // Refresh transactions
-      const txData = await api.getTransactions({
-        startDate: dateRange.start,
-        endDate: dateRange.end,
-      });
-      setTransactions(txData || []);
+      // Refresh transactions using SWR
+      refreshTransactions();
       setSelectedIds(new Set());
       setShowCategoryModal(false);
     } catch (error) {
@@ -113,7 +90,7 @@ export default function TransactionsPage() {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || (loading && transactions.length === 0)) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />

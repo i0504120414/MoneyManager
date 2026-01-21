@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { api, RecurringItem } from '@/lib/supabase';
+import { useRecurring } from '@/lib/hooks';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   RefreshCcw,
@@ -22,8 +23,7 @@ export default function RecurringPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [recurring, setRecurring] = useState<RecurringItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { recurring, isLoading: loading, refresh: refreshRecurring } = useRecurring();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
 
   useEffect(() => {
@@ -32,29 +32,10 @@ export default function RecurringPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const recurringData = await api.getRecurring();
-        setRecurring(recurringData || []);
-      } catch (error) {
-        console.error('Error fetching recurring:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
   const handleConfirm = async (id: string) => {
     try {
       await api.confirmRecurring(id, true);
-      setRecurring(recurring.map((r) =>
-        r.id === id ? { ...r, is_confirmed: true } : r
-      ));
+      refreshRecurring();
     } catch (error) {
       console.error('Error confirming recurring:', error);
     }
@@ -63,7 +44,7 @@ export default function RecurringPage() {
   const handleReject = async (id: string) => {
     try {
       await api.deleteRecurring(id);
-      setRecurring(recurring.filter((r) => r.id !== id));
+      refreshRecurring();
     } catch (error) {
       console.error('Error deleting recurring:', error);
     }
@@ -105,7 +86,7 @@ export default function RecurringPage() {
     .filter((r) => r.is_confirmed && (r.average_amount || r.amount_avg || 0) < 0)
     .reduce((sum, r) => sum + Math.abs(r.average_amount || r.amount_avg || 0), 0);
 
-  if (authLoading || loading) {
+  if (authLoading || (loading && recurring.length === 0)) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />

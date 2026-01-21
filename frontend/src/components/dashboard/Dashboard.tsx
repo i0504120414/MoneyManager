@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { api, Account, Transaction, Category, Recurring, CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { useState } from 'react';
+import { CREDIT_CARD_TYPES } from '@/lib/supabase';
+import { useDashboardData } from '@/lib/hooks';
 import AccountCards from './AccountCards';
 import BalanceChart from './BalanceChart';
 import BudgetTable from './BudgetTable';
@@ -9,43 +10,16 @@ import RecentTransactions from './RecentTransactions';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 export default function Dashboard() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [recurring, setRecurring] = useState<Recurring[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { accounts, transactions, categories, recurring, isLoading, refresh } = useDashboardData();
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
-    try {
-      const [accountsData, transactionsData, categoriesData, recurringData] = await Promise.all([
-        api.getAccounts(),
-        api.getTransactions(),
-        api.getCategories(),
-        api.getRecurring(),
-      ]);
-      setAccounts(accountsData || []);
-      setTransactions(transactionsData || []);
-      setCategories(categoriesData || []);
-      setRecurring(recurringData || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchData();
+    await refresh();
+    setTimeout(() => setRefreshing(false), 500);
   };
 
-  if (loading) {
+  if (isLoading && accounts.length === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 text-blue-600 spinner" />
