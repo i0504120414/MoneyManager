@@ -144,6 +144,9 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
   // Calculate total credit card charges
   const totalCreditCardCharges = Object.values(creditCardCharges).reduce((sum, charge) => sum + charge, 0);
 
+  // Filter credit cards to only show those with charges > 0
+  const creditCardsWithCharges = creditCardAccounts.filter(acc => (creditCardCharges[acc.id] || 0) > 0);
+
   if (accounts.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
@@ -221,7 +224,7 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
       })}
 
       {/* Credit Cards - Single Card with all cards inside */}
-      {creditCardAccounts.length > 0 && (
+      {creditCardsWithCharges.length > 0 && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-start justify-between mb-3">
             <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
@@ -230,7 +233,7 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
           </div>
 
           <h3 className="font-semibold text-slate-800">כרטיסי אשראי</h3>
-          <p className="text-xs text-slate-500">{creditCardAccounts.length} כרטיסים</p>
+          <p className="text-xs text-slate-500">{creditCardsWithCharges.length} כרטיסים</p>
 
           <div className="mt-3">
             <p className="text-xs text-slate-400">סה"כ חיוב קרוב</p>
@@ -241,7 +244,7 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
 
           {/* Mini list of cards */}
           <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-            {(showAllCards ? creditCardAccounts : creditCardAccounts.slice(0, 3)).map((account) => {
+            {(showAllCards ? creditCardsWithCharges : creditCardsWithCharges.slice(0, 3)).map((account) => {
               const style = bankStyles[account.bank_type] || bankStyles.default;
               const charge = creditCardCharges[account.id] || 0;
 
@@ -263,12 +266,12 @@ export default function AccountCards({ accounts }: AccountCardsProps) {
                 </div>
               );
             })}
-            {creditCardAccounts.length > 3 && (
+            {creditCardsWithCharges.length > 3 && (
               <button 
                 onClick={() => setShowAllCards(!showAllCards)}
                 className="text-xs text-blue-500 hover:text-blue-600 text-center w-full py-1 hover:bg-slate-50 rounded transition"
               >
-                {showAllCards ? 'הצג פחות' : `+${creditCardAccounts.length - 3} נוספים`}
+                {showAllCards ? 'הצג פחות' : `+${creditCardsWithCharges.length - 3} נוספים`}
               </button>
             )}
           </div>
