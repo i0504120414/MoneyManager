@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { addDays, format, startOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { ArrowDown, ArrowUp, CreditCard, Calendar, AlertTriangle } from 'lucide-react';
+import { ArrowDown, ArrowUp, CreditCard, Calendar, AlertTriangle, Landmark } from 'lucide-react';
 
 interface BalanceChartProps {
   currentBalance: number;
@@ -28,12 +28,14 @@ interface CreditCardTransaction {
   charged_amount: number;
   processed_date: string;
   description?: string;
+  account_id: string;
 }
 
 interface DayChange {
-  type: 'credit_card' | 'recurring_expense' | 'recurring_income';
+  type: 'credit_card' | 'recurring_expense' | 'recurring_income' | 'bank_income';
   description: string;
   amount: number;
+  accountName?: string;
 }
 
 interface ChartDataPoint {
@@ -76,21 +78,36 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
     const endDate = addDays(today, 30);
     const days = eachDayOfInterval({ start: today, end: endDate });
 
-    // Group credit card transactions by their processed_date
-    const chargesByDate: Record<string, { total: number; items: DayChange[] }> = {};
+    // Build account name lookup
+    const accountNames: Record<string, string> = {};
+    accounts.forEach(acc => {
+      // Create friendly name based on bank type
+      const bankNames: Record<string, string> = {
+        'hapoalim': 'בנק הפועלים',
+        'leumi': 'בנק לאומי',
+        'discount': 'בנק דיסקונט',
+        'mizrahi': 'בנק מזרחי',
+        'isracard': 'ישראכרט',
+        'amex': 'אמריקן אקספרס',
+        'max': 'מקס',
+        'visaCal': 'ויזה כאל',
+      };
+      accountNames[acc.id] = bankNames[acc.bank_type] || acc.bank_type;
+    });
+
+    // Group credit card transactions by account_id + processed_date
+    const chargesByDateAndAccount: Record<string, Record<string, { total: number; transactions: CreditCardTransaction[] }>> = {};
     creditCardTransactions.forEach(tx => {
-      if (tx.processed_date) {
+      if (tx.processed_date && tx.account_id) {
         const dateKey = format(startOfDay(parseISO(tx.processed_date)), 'yyyy-MM-dd');
-        if (!chargesByDate[dateKey]) {
-          chargesByDate[dateKey] = { total: 0, items: [] };
+        if (!chargesByDateAndAccount[dateKey]) {
+          chargesByDateAndAccount[dateKey] = {};
         }
-        const amount = Math.abs(tx.charged_amount || 0);
-        chargesByDate[dateKey].total += amount;
-        chargesByDate[dateKey].items.push({
-          type: 'credit_card',
-          description: tx.description || 'חיוב כרטיס אשראי',
-          amount: -amount,
-        });
+        if (!chargesByDateAndAccount[dateKey][tx.account_id]) {
+          chargesByDateAndAccount[dateKey][tx.account_id] = { total: 0, transactions: [] };
+        }
+        chargesByDateAndAccount[dateKey][tx.account_id].total += Math.abs(tx.charged_amount || 0);
+        chargesByDateAndAccount[dateKey][tx.account_id].transactions.push(tx);
       }
     });
 
@@ -98,11 +115,6 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
     const bankAccounts = accounts.filter(acc => !CREDIT_CARD_TYPES.includes(acc.bank_type));
     let runningBalance = bankAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
 
-    // Filter recurring - include all confirmed recurring items
-    const creditCardAccountIds = accounts
-      .filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type))
-      .map(acc => acc.id);
-    
     // Include both bank recurring AND credit card recurring that are confirmed
     const allRecurring = recurring;
 
@@ -111,11 +123,21 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
       const dateKey = format(day, 'yyyy-MM-dd');
       const changes: DayChange[] = [];
       
-      // Add credit card charges on their actual processed_date
-      const dayChargeData = chargesByDate[dateKey];
-      if (dayChargeData && dayChargeData.total > 0) {
-        runningBalance -= dayChargeData.total;
-        changes.push(...dayChargeData.items);
+      // Add credit card charges grouped by account on their actual processed_date
+      const dayChargesByAccount = chargesByDateAndAccount[dateKey];
+      if (dayChargesByAccount) {
+        Object.entries(dayChargesByAccount).forEach(([accountId, data]) => {
+          if (data.total > 0) {
+            runningBalance -= data.total;
+            // Group all transactions from this account on this date into one entry
+            changes.push({
+              type: 'credit_card',
+              description: `${accountNames[accountId] || 'כרטיס אשראי'} (${data.transactions.length} עסקאות)`,
+              amount: -data.total,
+              accountName: accountNames[accountId],
+            });
+          }
+        });
       }
       
       // Check for recurring transactions on this day
@@ -124,10 +146,15 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
           const amount = item.amount_avg || 0;
           runningBalance += amount;
           
+          // Find account name for recurring
+          const recurringAccountName = accountNames[item.account_id] || '';
+          const isCreditCardRecurring = accounts.find(a => a.id === item.account_id && CREDIT_CARD_TYPES.includes(a.bank_type));
+          
           changes.push({
-            type: amount < 0 ? 'recurring_expense' : 'recurring_income',
+            type: amount < 0 ? 'recurring_expense' : (isCreditCardRecurring ? 'recurring_income' : 'bank_income'),
             description: item.description || 'תשלום קבוע',
             amount: amount,
+            accountName: recurringAccountName,
           });
         }
       });
@@ -144,14 +171,17 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
   }, [currentBalance, recurring, accounts, creditCardTransactions]);
 
   const minBalance = Math.min(...chartData.map((d) => d.balance), 0);
-  const maxBalance = Math.max(...chartData.map((d) => d.balance));
-  const yDomain = [
-    Math.floor(minBalance * 1.1),
-    Math.ceil(maxBalance * 1.1),
+  const maxBalance = Math.max(...chartData.map((d) => d.balance), 0);
+  
+  // Ensure 0 is always in the middle by making yDomain symmetric around 0
+  const absMax = Math.max(Math.abs(minBalance), Math.abs(maxBalance));
+  const yDomain: [number, number] = [
+    Math.floor(-absMax * 1.1),
+    Math.ceil(absMax * 1.1),
   ];
 
-  // Find days with changes for the detail panel
-  const daysWithChanges = chartData.filter(d => d.changes.length > 0);
+  // Show all days in the detail panel (not just days with changes)
+  const daysToShow = chartData.filter(d => d.changes.length > 0);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -250,14 +280,14 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
       </div>
 
       {/* Changes Detail Panel */}
-      {daysWithChanges.length > 0 && (
+      {daysToShow.length > 0 && (
         <div className="bg-slate-50 rounded-xl p-4">
           <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             שינויים צפויים
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {daysWithChanges.slice(0, 10).map((day, dayIndex) => (
+            {daysToShow.slice(0, 10).map((day, dayIndex) => (
               <div key={dayIndex} className="bg-white rounded-lg p-3 border border-slate-100">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-slate-600">{day.fullDate}</span>
@@ -271,6 +301,8 @@ export default function BalanceChart({ currentBalance, recurring, accounts }: Ba
                       <div className="flex items-center gap-2">
                         {change.type === 'credit_card' ? (
                           <CreditCard className="w-3 h-3 text-purple-500" />
+                        ) : change.type === 'bank_income' ? (
+                          <Landmark className="w-3 h-3 text-blue-500" />
                         ) : change.amount < 0 ? (
                           <ArrowDown className="w-3 h-3 text-red-500" />
                         ) : (

@@ -126,7 +126,7 @@ export const api = {
     
     const { data, error } = await supabase
       .from('transactions')
-      .select('charged_amount, processed_date')
+      .select('charged_amount, processed_date, description, account_id')
       .eq('account_id', accountId)
       .not('processed_date', 'is', null)
       .gte('processed_date', today)
@@ -148,7 +148,7 @@ export const api = {
       .from('transactions')
       .select(`
         *,
-        bank_accounts!inner(bank_type)
+        bank_accounts!inner(id, bank_type, bank_name)
       `)
       .order('date', { ascending: false });
 

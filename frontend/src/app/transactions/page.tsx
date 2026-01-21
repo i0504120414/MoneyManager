@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { api, Transaction, Category } from '@/lib/supabase';
+import { api, Transaction, Category, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   Search,
@@ -16,6 +16,8 @@ import {
   Check,
   Tag,
   Calendar,
+  CreditCard,
+  Landmark,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -271,6 +273,7 @@ export default function TransactionsPage() {
                       />
                     </th>
                     <th className="p-4 text-right text-sm font-medium text-slate-600">תאריך</th>
+                    <th className="p-4 text-right text-sm font-medium text-slate-600">סוג</th>
                     <th className="p-4 text-right text-sm font-medium text-slate-600">תיאור</th>
                     <th className="p-4 text-right text-sm font-medium text-slate-600">קטגוריה</th>
                     <th className="p-4 text-left text-sm font-medium text-slate-600">סכום</th>
@@ -281,6 +284,8 @@ export default function TransactionsPage() {
                     const isIncome = transaction.charged_amount > 0;
                     const amount = Math.abs(transaction.charged_amount);
                     const category = categories.find((c) => c.id === transaction.category_id);
+                    const bankType = (transaction as any).bank_accounts?.bank_type;
+                    const isCreditCard = bankType && CREDIT_CARD_TYPES.includes(bankType);
 
                     return (
                       <tr
@@ -299,6 +304,21 @@ export default function TransactionsPage() {
                           <p className="text-sm text-slate-600">
                             {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: he })}
                           </p>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            {isCreditCard ? (
+                              <div className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 rounded-lg">
+                                <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                                <span className="text-xs text-purple-700 font-medium">אשראי</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg">
+                                <Landmark className="w-3.5 h-3.5 text-blue-600" />
+                                <span className="text-xs text-blue-700 font-medium">בנק</span>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
