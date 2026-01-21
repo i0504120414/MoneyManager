@@ -11,7 +11,78 @@ const swrConfig = {
   keepPreviousData: true,        // Keep showing old data while fetching new
 };
 
-// Custom hooks for data fetching with caching
+// Credit card transaction for chart display
+interface CreditCardTransaction {
+  charged_amount: number;
+  processed_date: string;
+  description?: string;
+  account_id: string;
+}
+
+// Dashboard data interface
+interface DashboardData {
+  accounts: Account[];
+  transactions: Transaction[];
+  categories: Category[];
+  recurring: Recurring[];
+  creditCardTransactions: CreditCardTransaction[];
+}
+
+// Fetch all dashboard data in parallel
+async function fetchAllDashboardData(): Promise<DashboardData> {
+  // First, fetch accounts, transactions, categories, and recurring in parallel
+  const [accounts, transactions, categories, recurring] = await Promise.all([
+    api.getAccounts(),
+    api.getTransactions(),
+    api.getCategories(),
+    api.getRecurring(),
+  ]);
+
+  // Now fetch credit card transactions for all credit card accounts
+  const creditCards = (accounts || []).filter((acc: Account) => CREDIT_CARD_TYPES.includes(acc.bank_type));
+  const ccTransactionsPromises = creditCards.map(async (card: Account) => {
+    try {
+      const txs = await api.getCreditCardTransactionsWithProcessedDate(card.id);
+      return txs.map((tx: any) => ({ ...tx, account_id: card.id }));
+    } catch (error) {
+      console.error('Error fetching credit card transactions:', error);
+      return [];
+    }
+  });
+  
+  const ccTransactionsArrays = await Promise.all(ccTransactionsPromises);
+  const creditCardTransactions = ccTransactionsArrays.flat();
+
+  return {
+    accounts: accounts || [],
+    transactions: transactions || [],
+    categories: categories || [],
+    recurring: recurring || [],
+    creditCardTransactions,
+  };
+}
+
+// Main dashboard hook - fetches everything together
+export function useDashboardData() {
+  const { data, error, isLoading, mutate } = useSWR(
+    'dashboard-all-data',
+    fetchAllDashboardData,
+    swrConfig
+  );
+  
+  return {
+    accounts: data?.accounts || [],
+    transactions: data?.transactions || [],
+    categories: data?.categories || [],
+    recurring: data?.recurring || [],
+    creditCardTransactions: data?.creditCardTransactions || [],
+    isLoading,
+    isError: error,
+    refresh: mutate,
+  };
+}
+
+// Individual hooks for pages that don't need everything
 
 export function useAccounts() {
   const { data, error, isLoading, mutate } = useSWR(
@@ -81,79 +152,5 @@ export function useRecurring() {
     isLoading,
     isError: error,
     refresh: mutate,
-  };
-}
-
-// Credit card transaction for chart display
-interface CreditCardTransaction {
-  charged_amount: number;
-  processed_date: string;
-  description?: string;
-  account_id: string;
-}
-
-// Fetch credit card transactions for all credit card accounts
-async function fetchCreditCardTransactions(accounts: Account[]): Promise<CreditCardTransaction[]> {
-  const creditCards = accounts.filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type));
-  const allTransactions: CreditCardTransaction[] = [];
-  
-  for (const card of creditCards) {
-    try {
-      const transactions = await api.getCreditCardTransactionsWithProcessedDate(card.id);
-      allTransactions.push(...transactions.map(tx => ({ ...tx, account_id: card.id })));
-    } catch (error) {
-      console.error('Error fetching credit card transactions:', error);
-    }
-  }
-  
-  return allTransactions;
-}
-
-export function useCreditCardTransactions(accounts: Account[]) {
-  const accountIds = accounts
-    .filter(acc => CREDIT_CARD_TYPES.includes(acc.bank_type))
-    .map(acc => acc.id)
-    .sort()
-    .join(',');
-  
-  const { data, error, isLoading, mutate } = useSWR(
-    accountIds ? `cc-transactions-${accountIds}` : null,
-    () => fetchCreditCardTransactions(accounts),
-    swrConfig
-  );
-  
-  return {
-    creditCardTransactions: data || [],
-    isLoading,
-    isError: error,
-    refresh: mutate,
-  };
-}
-
-export function useDashboardData() {
-  const { accounts, isLoading: accountsLoading, refresh: refreshAccounts } = useAccounts();
-  const { transactions, isLoading: transactionsLoading, refresh: refreshTransactions } = useTransactions();
-  const { categories, isLoading: categoriesLoading, refresh: refreshCategories } = useCategories();
-  const { recurring, isLoading: recurringLoading, refresh: refreshRecurring } = useRecurring();
-  const { creditCardTransactions, isLoading: ccLoading, refresh: refreshCC } = useCreditCardTransactions(accounts);
-  
-  const isLoading = accountsLoading || transactionsLoading || categoriesLoading || recurringLoading || ccLoading;
-  
-  const refreshAll = () => {
-    refreshAccounts();
-    refreshTransactions();
-    refreshCategories();
-    refreshRecurring();
-    refreshCC();
-  };
-  
-  return {
-    accounts,
-    transactions,
-    categories,
-    recurring,
-    creditCardTransactions,
-    isLoading,
-    refresh: refreshAll,
   };
 }
