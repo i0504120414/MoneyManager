@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, Account, Transaction, Category, Recurring } from '@/lib/supabase';
+import { api, Account, Transaction, Category, Recurring, CREDIT_CARD_TYPES } from '@/lib/supabase';
 import AccountCards from './AccountCards';
 import BalanceChart from './BalanceChart';
 import BudgetTable from './BudgetTable';
@@ -56,12 +56,19 @@ export default function Dashboard() {
   // Calculate total balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
   
-  // Filter accounts: only active (not error, not cancelled) and with non-zero balance
-  const activeAccounts = accounts.filter(acc => 
-    acc.status !== 'error' && 
-    !acc.is_cancelled && 
-    (acc.balance || 0) !== 0
-  );
+  // Filter accounts: only active (not error, not cancelled)
+  // For bank accounts: also filter out 0 balance
+  // For credit cards: always show (they don't have balance, they have charges)
+  const activeAccounts = accounts.filter(acc => {
+    if (acc.status === 'error' || acc.is_cancelled) return false;
+    
+    // Credit cards - always include (they use charges, not balance)
+    const isCreditCard = CREDIT_CARD_TYPES.includes(acc.bank_type);
+    if (isCreditCard) return true;
+    
+    // Bank accounts - filter out 0 balance
+    return (acc.balance || 0) !== 0;
+  });
 
   return (
     <div className="space-y-6">
