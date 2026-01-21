@@ -148,7 +148,7 @@ export const api = {
       .from('transactions')
       .select(`
         *,
-        bank_accounts!inner(id, bank_type, bank_name)
+        bank_accounts!inner(id, bank_type)
       `)
       .order('date', { ascending: false });
 
